@@ -60,6 +60,20 @@ class CommandedTransformedDistribution(tf.keras.Model):
         )
         plt.savefig(name)
 
+    def density(self,command=None,name='plop',limits=((-2,2,0.05),(-2,2,0.05))):
+        if self.distribution_dim>2:
+            raise NotImplementedError
+
+        sample = np.mgrid[[slice(a,b,e) for a,b,e in limits]].transpose()
+        x,y,_ = sample.shape
+        sample = sample.reshape(-1,self.distribution_dim)
+        if command is None:
+            command = tf.ones((len(sample),self.command_dim))
+        return self.prob(
+            sample,
+            command
+        ).numpy().reshape(x,y)
+
 
 class FlowEnsemble(tf.keras.Model):
     def __init__(self, flow_family, command_dim=0,distribution_dim=2,name='Flowensemble'):
