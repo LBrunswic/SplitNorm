@@ -203,8 +203,13 @@ for transformed_distribution in transformed_distributions:
 
 
 @tf.function
-def aux(sample_batch,command_batch):
-    return [transformed_distributions[i].reshape(transformed_distributions[i].score(sample_batch[:,i],command_batch[:,i])) for i in range(3)]
+def aux(weight_batch,sample_batch,command_batch):
+     scores = [tf.reduce_mean(weight_batch[:,i]*transformed_distributions[i].reshape(transformed_distributions[i].score(sample_batch[:,i],command_batch[:,i]))) for i in range(3)]
+     return  scores[0]+scores[1]+scores[2]
+
+trainable_var = []
+for self in transformed_distributions:
+    trainable_var += self.trainable_variables
 
 def train_step(weighted_sample_command_batch):
     weight_batch, sample_batch, command_batch = tf.split(
@@ -212,17 +217,8 @@ def train_step(weighted_sample_command_batch):
         axis=-1
     )
     weight_batch=tf.reshape(weight_batch,(-1,3))
-    trainable_var = []
-    for self in transformed_distributions:
-        trainable_var += self.trainable_variables
-
     with tf.GradientTape() as tape:
-        print(sample_batch.shape,command_batch.shape)
-        i=0
-        print(sample_batch[:,i].shape,command_batch[:,i].shape)
-        scores = aux(sample_batch,command_batch)
-        scores = [tf.reduce_mean(weight_batch[:,i]*scores[i]) for i in range(3)]
-        loss = scores[0]+scores[1]+scores[2]
+        loss = aux(weight_batch,sample_batch,command_batch)
     grad = tape.gradient(loss, trainable_var)
     self.optimizer.apply_gradients(zip(grad, trainable_var))
 for epoch in range(EPOCHS):
