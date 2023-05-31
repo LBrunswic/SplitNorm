@@ -172,12 +172,12 @@ dataset_as_tensor = np.concatenate([image,coordinates,commands],axis=-1).reshape
 dataset_as_tensor.shape
 
 
-
-T = time.time()
-a = [transformed_distribution.density(limits=limits) for transformed_distribution in transformed_distributions]
-print(time.time()-T)
-b = tf.concat([tf.reshape(x,(*x.shape,1)) for x in a],axis=-1)
-b.shape
+#
+# T = time.time()
+# a = [transformed_distribution.density(limits=limits) for transformed_distribution in transformed_distributions]
+# print(time.time()-T)
+# b = tf.concat([tf.reshape(x,(*x.shape,1)) for x in a],axis=-1)
+# b.shape
 renormalization = np.sum(np.sum(image,axis=0),axis=0)[:,0].reshape(1,1,-1)
 renormalization
 def save_pic(data,name):
@@ -185,8 +185,8 @@ def save_pic(data,name):
     image_gen = np.clip(data/renorm,0,255).astype('uint8')
     im = Image.fromarray(image_gen)
     im.save(os.path.join(SAVE_FOLDER,'%s.png' % name))
-save_pic(b,'initial')
-b.shape
+# save_pic(b,'initial')
+# b.shape
 
 
 
@@ -199,12 +199,37 @@ for transformed_distribution in transformed_distributions:
     transformed_distribution.compile(
         optimizer=tf.keras.optimizers.Adam(1e-2)
     )
+
+
+
+@tf.function
+def aux(sample_batch,command_batch):
+    return [transformed_distributions[i].reshape(transformed_distributions[i].score(sample_batch[:,i],command_batch[:,i])) for i in range(3)]
+
+def train_step(weighted_sample_command_batch):
+    weight_batch, sample_batch, command_batch = tf.split(
+        weighted_sample_command_batch,[1,DISTRIBUTION_DIM,-1],
+        axis=-1
+    )
+    weight_batch=tf.reshape(weight_batch,(-1,3))
+    trainable_var = []
+    for self in transformed_distributions:
+        trainable_var += self.trainable_variables
+
+    with tf.GradientTape() as tape:
+        print(sample_batch.shape,command_batch.shape)
+        i=0
+        print(sample_batch[:,i].shape,command_batch[:,i].shape)
+        scores = aux(sample_batch,command_batch)
+        scores = [tf.reduce_mean(weight_batch[:,i]*scores[i]) for i in range(3)]
+        loss = scores[0]+scores[1]+scores[2]
+    grad = tape.gradient(loss, trainable_var)
+    self.optimizer.apply_gradients(zip(grad, trainable_var))
 for epoch in range(EPOCHS):
     i=0
     for batch in dataset:
         L = time.time()
-        for color in range(3):
-            transformed_distributions[color].train_step(batch[:,color])
+        train_step(batch)
         i+=1
         print("epoch %s, batch %s done in %s seconds" % (epoch,i,time.time()-L))
     if epoch%10 == 0 and epoch>0:

@@ -36,7 +36,6 @@ class CommandedTransformedDistribution(tf.keras.Model):
         trainable_var = self.trainable_variables
         with tf.GradientTape() as tape:
             scores = self.reshape(self.score(sample_batch,command_batch))
-            print(scores.shape,weight_batch.shape)
             scores = weight_batch*scores
             loss = tf.reduce_mean(scores)
         grad = tape.gradient(loss, trainable_var)
