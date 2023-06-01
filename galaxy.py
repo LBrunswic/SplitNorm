@@ -196,10 +196,8 @@ dataset = dataset.cache()
 dataset = dataset.shuffle(dataset_size)
 dataset = dataset.batch(batch_size)
 for transformed_distribution in transformed_distributions:
-    transformed_distribution.compile(
-        optimizer=tf.keras.optimizers.Adam(1e-2)
-    )
-
+    transformed_distribution.compile()
+optimizer=tf.keras.optimizers.Adam(1e-2)
 
 
 @tf.function
@@ -220,7 +218,7 @@ def train_step(weighted_sample_command_batch):
     with tf.GradientTape() as tape:
         loss = aux(weight_batch,sample_batch,command_batch)
     grad = tape.gradient(loss, trainable_var)
-    self.optimizer.apply_gradients(zip(grad, trainable_var))
+    optimizer.apply_gradients(zip(grad, trainable_var))
 for epoch in range(EPOCHS):
     i=0
     for batch in dataset:
