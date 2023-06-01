@@ -18,12 +18,25 @@
 ## Commanded layers
 - [ ] reimplement based Dense/CNN layers with command kwarg
 
+
+
 ## Implementation of Flows
+### Flow Constructors
+Elementary NF are obtained by composing simple operations. Lifted normalization
+via convolutional flows generalizes this to a channel space distributional parameterization.
+The simplest instance is an Ensemble of NF (a finite family of $p$ flows, the channeller outputs a distribution hence a softmax weighting of the  
+  $$ C(x) = \sum_{i=1}^p \alpha_{i} \delta_{c_i}, \quad \alpha ) \mathrm{softmax}(NN(x))$$
+
+The constructions allow to
+- [x] Ensemble of NF
+- [x] Convolution of Flows (channeller,commander,kernel)
+
 The goal is to have building blocks for flows
 ### GLOW/NICE
 - [ ] Add
 
-### Moser flow and other flow matching methods (https://proceedings.neurips.cc/paper/2021/hash/93a27b0bd99bac3e68a440b48aa421ab-Abstract.html)
+### Moser flow and other flow matching methods
+[https://proceedings.neurips.cc/paper/2021/hash/93a27b0bd99bac3e68a440b48aa421ab-Abstract.html]
 - [ ] Implementation of Moser Flow
 - [ ] Implement some regularization methods
 - [ ] Bibliography on solution of poisson problem
@@ -55,5 +68,5 @@ The goal is to have building blocks for flows
 - [ ] Review possible usage of the method
 ## On Optimal transport
 - [ ] review of Wasserstein losses
-- [ ] Brenier-McCann c-convex map flow parametrization 
+- [ ] Brenier-McCann c-convex map flow parametrization
 #
