@@ -35,6 +35,10 @@ The goal is to have building blocks for flows
 - [ ] implement a class designed for training of iterated normalization
 
 # Theory
+## Thorough comparison to other models
+- [ ] Stability/expressivity analysis compared to NF including Matching flows (Moser, etc)
+- [ ] How Higher Convolution compares to VAE/GAN especially regarding multi-modal distribution (why does those methods have mutli-mode issues why this is not the case here?)
+
 ## Total Normalization loss
 - [ ] Better computation of the Total normalization loss, in particular the channeled self-entropy
 - [ ] Find regularization methods for continuously parameterized flows
@@ -49,3 +53,7 @@ The goal is to have building blocks for flows
 - [ ] Formulate the correct training losses
 ## On AIGP
 - [ ] Review possible usage of the method
+## On Optimal transport
+- [ ] review of Wasserstein losses
+- [ ] Brenier-McCann c-convex map flow parametrization 
+#
