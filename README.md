@@ -4,7 +4,7 @@
 # TODO
 
 ## Pytorch Implementation
-- Migrate code to Pytorch
+- [ ] Migrate code to Pytorch
 
 ## TF Implementation
 - [x] Have single MNIST instance working
@@ -32,7 +32,7 @@ The goal is to have building blocks for flows
 - [ ] Better ODE solver
 
 # Secondary normalization and generation
-- [ ] implement a class designed for training of
+- [ ] implement a class designed for training of iterated normalization
 
 # Theory
 ## Total Normalization loss
@@ -43,3 +43,9 @@ The goal is to have building blocks for flows
 - [ ] Bibliography review of dimensional methods and analysis
 - [ ] add table to paper
 - [ ] If need be, compute the intrinsic dimension of other datasets
+## Iterated normalization
+- [ ] Clarify situations in which it is useful to have more than one
+## Wasserstein Gradient Flow training
+- [ ] Formulate the correct training losses
+## On AIGP
+- [ ] Review possible usage of the method
