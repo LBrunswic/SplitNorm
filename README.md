@@ -67,6 +67,7 @@ The goal is to have building blocks for flows
 - [ ] Formulate the correct training losses
 ## On AIGP
 - [ ] Review possible usage of the method
+- [ ] Context-Multi-task RL?
 ## On Optimal transport
 - [ ] review of Wasserstein losses
 - [ ] Brenier-McCann c-convex map flow parametrization
