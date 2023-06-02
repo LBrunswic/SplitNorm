@@ -12,10 +12,10 @@ from PIL import Image
 tfd = tfp.distributions
 now = datetime.datetime.now()
 date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
-IMAGE = 'nasa_galaxy.png'
+IMAGE = 'nasa_galaxy_xsmall.png'
 
 image = iio.imread(os.path.join('images', IMAGE))
-image.shape
+colors = image.shape[-1]
 
 
 T = time.time()
@@ -58,7 +58,7 @@ switch_arch = [
     ]
 ]
 
-ffjord_cores = [ ConvolutionalKernel.utils.build(switch_arch[ARCH]) for _ in range(3)]
+ffjord_cores = [ ConvolutionalKernel.utils.build(switch_arch[ARCH]) for _ in range(colors)]
 
 infra_command = ffjord_cores[0].command_dim
 
@@ -158,7 +158,13 @@ base_distribution = tfd.MultivariateNormalDiag(**base_distributionKWarg)
 transformed_distributions = [ConvKernel.build_dist(base_distribution) for ConvKernel in ConvKernels]
 
 image = iio.imread(os.path.join('images', IMAGE))
-image.shape
+print(image.shape)
+# ay = image.shape[0]//3
+# by = (2*image.shape[0])//3
+# ax = image.shape[1]//5
+# bx = (4*image.shape[1])//5
+# image = image[ay:by,ax:bx]
+# print(image.shape)
 batch_size = 2**6
 dataset_size = image.shape[0]*image.shape[1]
 xmax, ymax,colors = image.shape
@@ -167,27 +173,25 @@ image = image.reshape(*image.shape,1)
 limits = [(-2,2,4/ymax),(-2,2,4/xmax)]
 coordinates = np.mgrid[[slice(a, b, e) for a, b, e in limits]].transpose().astype('float32').reshape(xmax,ymax,1,2)
 coordinates.shape
-coordinates = tf.broadcast_to(coordinates,(xmax,ymax,3,2))
+coordinates = tf.broadcast_to(coordinates,(xmax,ymax,colors,2))
 dataset_as_tensor = np.concatenate([image,coordinates,commands],axis=-1).reshape(xmax*ymax,colors,-1)
 dataset_as_tensor.shape
 
 
 #
-# T = time.time()
-# a = [transformed_distribution.density(limits=limits) for transformed_distribution in transformed_distributions]
-# print(time.time()-T)
-# b = tf.concat([tf.reshape(x,(*x.shape,1)) for x in a],axis=-1)
-# b.shape
+T = time.time()
+a = [transformed_distribution.density(limits=limits) for transformed_distribution in transformed_distributions]
+print(time.time()-T)
+b = tf.concat([tf.reshape(x,(*x.shape,1)) for x in a],axis=-1)
+b.shape
 renormalization = np.sum(np.sum(image,axis=0),axis=0)[:,0].reshape(1,1,-1)
-renormalization
+# renormalization
 def save_pic(data,name):
     renorm = np.sum(np.sum(data,axis=0),axis=0)[:].reshape(1,1,-1)/renormalization
     image_gen = np.clip(data/renorm,0,255).astype('uint8')
     im = Image.fromarray(image_gen)
     im.save(os.path.join(SAVE_FOLDER,'%s.png' % name))
-# save_pic(b,'initial')
-# b.shape
-
+save_pic(b,'initial')
 
 
 dataset = tf.data.Dataset.from_tensor_slices(dataset_as_tensor)
@@ -202,8 +206,8 @@ optimizer=tf.keras.optimizers.Adam(1e-2)
 
 @tf.function
 def aux(weight_batch,sample_batch,command_batch):
-     scores = [tf.reduce_mean(weight_batch[:,i]*transformed_distributions[i].reshape(transformed_distributions[i].score(sample_batch[:,i],command_batch[:,i]))) for i in range(3)]
-     return  scores[0]+scores[1]+scores[2]
+     scores = [tf.reduce_mean(weight_batch[:,i]*transformed_distributions[i].reshape(transformed_distributions[i].score(sample_batch[:,i],command_batch[:,i]))) for i in range(colors)]
+     return  scores[0]+scores[1]+scores[2]+scores[3]
 
 trainable_var = []
 for self in transformed_distributions:
@@ -214,7 +218,7 @@ def train_step(weighted_sample_command_batch):
         weighted_sample_command_batch,[1,DISTRIBUTION_DIM,-1],
         axis=-1
     )
-    weight_batch=tf.reshape(weight_batch,(-1,3))
+    weight_batch=tf.reshape(weight_batch,(-1,colors))
     with tf.GradientTape() as tape:
         loss = aux(weight_batch,sample_batch,command_batch)
     grad = tape.gradient(loss, trainable_var)

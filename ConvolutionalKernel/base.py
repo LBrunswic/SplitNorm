@@ -192,10 +192,73 @@ def __init__(self, kernel_ensemble, channeller, commander, quantization_dim=None
 
 def build_dist(self,base_distribution):
     transformed_distribution = self.kernel_ensemble.build_dist(base_distribution)
+    reshape = tf.keras.layers.Reshape((1,1))
+    concat_prob = tf.keras.layers.Concatenate(axis=-2)
+    reshape_total = tf.keras.layers.Reshape((self.quantization_dim,1))
+    concat_total = tf.keras.layers.Concatenate(axis=-1)
+    reshape_command = tf.keras.layers.Reshape((1,-1))
+    dot = tf.keras.layers.Dot(axes=-1)
+
     @tf.function
-    def _score(sample_batch,command_batch):
-        weighted_channel_batch = self.channeller((sample_batch, command_batch))
-        # (data_batch_size,command_batch_size,infra_command_dim+1)
+    def _aux(batch_quantized_dist_flat, command_batch_flat):
+        return batch_quantized_dist_flat[:,-1]*tf.reshape(transformed_distribution.score(batch_quantized_dist_flat[:,:-1],command_batch_flat),(-1,))
+
+    @tf.function
+    def _score(batch_quantized_dist,command_batch):
+        # A batch of distributions, command is given. Distribution are given
+        # in a quantized way eg a batch of weighted samples of the distribution
+        # is given. Therefore the input has shape
+        #           ( batch_size, quantization_dim, distribution_dim + 1)
+        # The Channeller take the whole as input  and return a batch of channels thus
+        #  ( batch_size, channel_batch_size, channel_dim +1)
+        # the channel_batch (without the weights) is split to given a list of
+        # ( batch_size, channel_dim)
+        # fed to the commander which provides
+        # (batch_size, command_dim)
+        #  we want to feed  (batch_size, quantization_dim, distribution_dim+1) efficiently
+        # to the kernel below we thus reshape into (batch*quantization_dim,distribution_dim+1)
+        # Also the command has to be broadcast_to (batch_size,quantization_dim,command_dim)
+        # and reshaped the same way
+        batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
+        weighted_channels_batch = self.channel(batch_quantized_dist_no_coord,command_batch) # (data_batch_size,channel_batch_size,channel_dim+1)
+        A = []
+        for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
+            batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
+            #(data_batch_size*quant_dim,dim+1)
+
+            command_dim = channel_batch.shape[1]
+            x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.command(channel_batch,command_batch))
+            #    (batch_size,quant_dim,1)  +  (batch_size,1,command_dim) = (data_batch_size,quant_dim,command_dim)
+            # TODO 1  : replace by a dynamic shape broadcast_to
+            # https://stackoverflow.com/questions/57716363/explicit-broadcasting-of-variable-batch-size-tensor
+
+            command_batch_flat = tf.reshape(x,(-1,command_dim))
+            # (batch_size*quant_dim,command_dim)
+
+            s = _aux(batch_quantized_dist_flat, command_batch_flat)
+            # (data_batch_size*quant_dim,dim+1),(batch_size*quant_dim,command_dim) -> (batch_size*quant_dim,)
+
+            a=tf.reduce_sum(tf.reshape(s,(-1,quantization_dim,1)),axis=1)
+            # (batch_size*quant_dim,)  ->  (batch_size,quant_dim,1) -> (batch_size,1)
+
+            A.append(a)
+
+        scores = self.concat_total(A)  #(batch_size,command_dim)
+        #[(batch_size,1) for _ in range(channel_batch_size)] -> (batch_size,channel_batch_size)
+
+        weight_batch = weighted_command_batch[:, :, -1]
+        return self.dot([scores,weight_batch])
+
+        weighted_channels_batch = self.channeller((sample_batch, command_batch))
+        # (data_batch_size,chanel_batch_size,infra_command_dim+1)
+
+        for channel_batch in tf.unstack(weighted_channel_batch[:, :, :-1], axis=1):
+            transformed_distribution.score(sample_batch,  self.commander((channel_batch, command_batch)))
+            a = self.reshape()
+            A.append(a)
+        scores = self.concat(A)
+        weight_batch = weighted_channel_batch[:, :, -1]
+        return self.dot([scores, weight_batch])
 
 
     def _prob(sample_batch,command_batch,*args,**kwargs):
