@@ -24,8 +24,9 @@
 ### Flow Constructors
 Elementary NF are obtained by composing simple operations. Lifted normalization
 via convolutional flows generalizes this to a channel space distributional parameterization.
-The simplest instance is an Ensemble of NF (a finite family of $p$ flows, the channeller outputs a distribution hence a softmax weighting of the  
+The simplest instance is an Ensemble of NF (a finite family of $p$ flows, the channeller outputs a distribution hence a softmax weighting of the flows:
   $$ C(x) = \sum_{i=1}^p \alpha_{i} \delta_{c_i}, \quad \alpha ) \mathrm{softmax}(NN(x))$$
+
 
 The constructions allow to
 - [x] Ensemble of NF
