@@ -19,8 +19,25 @@
 - [ ] reimplement based Dense/CNN layers with command kwarg
 
 
+## Tests
+### Basic tests
+- [x] test script of convolutional kernel training (simple example)
+- [ ] test script of convolutional kernel training (involved example)
+- [ ] test script of HigherConvKernels with visualization of secondary normalization
+
+### Reference architectures
+- [ ] Choice of a reference small architecture MNIST/CIFAR capable
+- [ ] Choice of a reference architecture for
+
+### Description of test of influence of relative dimension of Channel space / distribution dimension
+- [ ] Elementary script
+- [ ] thorough tests
+### Toward Publication tests
+- [ ] Description of families of architecures to be tested and choices of hyperparameters
+- [ ] Industrial test scripts
 
 ## Implementation of Flows
+
 ### Flow Constructors
 Elementary NF are obtained by composing simple operations. Lifted normalization
 via convolutional flows generalizes this to a channel space distributional parameterization.
@@ -50,7 +67,7 @@ The goal is to have building blocks for flows
   - [x] some tests of  simple variations on TF ODE solver code
   - [ ] Implementation of other methods
   - [ ] Some theoretical analysis of the issue at hand, SOTA and potential improvements
-    
+
 # Secondary normalization and generation
 - [ ] implement a class designed for training of iterated normalization
 
