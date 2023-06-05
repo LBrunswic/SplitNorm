@@ -8,7 +8,7 @@
 
 ## TF Implementation
 - [x] Have single MNIST instance working
-- [ ] Clean ConvKernel2 (Leo)
+- [x] Clean ConvKernel2 (Leo)
 - [ ] Solve the fit training issue
 ##  Benchmarking
 - [ ] Choice of datasets for showcase (2 scales of images datasets, Finance dataset, manifold learning)
@@ -43,8 +43,10 @@ The goal is to have building blocks for flows
 - [ ] Bibliography on solution of poisson problem
 ###  FFJORD
 - [ ] Add Benamou-Brenier regularization
-- [ ] Better ODE solver
-
+- Better ODE solver
+  - [ ] Quick review of Elementary numerical methods
+  - [x] Deeper review of numerical methods
+  - 
 # Secondary normalization and generation
 - [ ] implement a class designed for training of iterated normalization
 
