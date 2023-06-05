@@ -44,9 +44,13 @@ The goal is to have building blocks for flows
 ###  FFJORD
 - [ ] Add Benamou-Brenier regularization
 - Better ODE solver
-  - [ ] Quick review of Elementary numerical methods
-  - [x] Deeper review of numerical methods
-  - 
+  - [x] Quick review of Elementary numerical methods
+  - [ ] Deeper review of numerical methods
+  - [x] Analysis of TF code + how to modify it
+  - [x] some tests of  simple variations on TF ODE solver code
+  - [ ] Implementation of other methods
+  - [ ] Some theoretical analysis of the issue at hand, SOTA and potential improvements
+    
 # Secondary normalization and generation
 - [ ] implement a class designed for training of iterated normalization
 
