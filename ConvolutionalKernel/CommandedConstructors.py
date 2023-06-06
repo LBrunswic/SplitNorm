@@ -33,7 +33,7 @@ def torus_positional_encoding(dim=2,cutoff=8):
     return tf.keras.Model(inputs=input_x, outputs=outputs,name='positional_encoding_k%s' % cutoff)
 
 
-def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, n_switch=4,cutoff = 8, ensemble_size=2,inward_depth=1,switch_dim=16,inward_width=8,kernelKWarg={}):
+def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, add_x=True, n_switch=4,cutoff = 8, ensemble_size=2,inward_depth=1,switch_dim=16,inward_width=8,kernelKWarg={}):
     command_dim = n_switch * ensemble_size
     input_x = tf.keras.Input(shape=(dim+1,))
     input_command = tf.keras.Input(shape=(command_dim,))
@@ -41,8 +41,10 @@ def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, n_switch=4
 
     encoding = torus_positional_encoding(dim=dim,cutoff=cutoff)
     x,t = tf.split(input_x,[dim,1],axis=-1)
-    input_encoded_x =  tf.keras.layers.Concatenate()([x,encoding(x),t])
-
+    if add_x:
+        input_encoded_x =  tf.keras.layers.Concatenate()([x,encoding(x),t])
+    else:
+        input_encoded_x =  tf.keras.layers.Concatenate()([encoding(x),t])
     switch_commands = tf.split(input_command, n_switch, axis=1)
     flow_family = [
         [_aux_sequential_dense_gen(switch_dim,inward_width,inward_depth,kernelKWarg=kernelKWarg) for _ in range(ensemble_size)]

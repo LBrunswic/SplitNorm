@@ -11,7 +11,7 @@ now = datetime.datetime.now()
 date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 T = time.time()
-EPOCHS = 400
+EPOCHS = 1000
 DISTRIBUTION_DIM = 2
 # CHANNEL_DIM = 1
 COMMAND_DIM = 0
@@ -116,7 +116,7 @@ transformed_distribution = ConvKernel.build_dist(base_distribution)
 mnist_list=[1,3,5,7,2,35,13,15,17,18,19]
 batch_size = 28*28
 dataset_size = 28*28
-for j in mnist_list:
+for j in mnist_list[:1]:
     image = tf.keras.datasets.mnist.load_data()[0][0][j]
     xmax, ymax = image.shape
     commands = tf.ones((*image.shape,transformed_distribution.command_dim))
