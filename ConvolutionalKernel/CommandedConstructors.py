@@ -28,9 +28,9 @@ def commanded_switched_ensemble_sequential_dense(dim=2,n_switch=4,ensemble_size=
 
 def torus_positional_encoding(dim=2,cutoff=8):
     input_x = tf.keras.Input(shape=(dim,))
-    multi_x = tf.Concatenate()([i*input_x for i in tf.range(1,cutoff+1)])
-    outputs = tf.Concatenate()(tf.math.cos(multi_x),tf.math.sin(multi_x))
-    return tf.keras.Model(inputs=inputs, outputs=level_out,name='positional_encoding_k%s' % cutoff)
+    multi_x = tf.keras.layers.Concatenate()([float(i)*input_x for i in tf.range(1,cutoff+1)])
+    outputs = tf.keras.layers.Concatenate()([tf.math.cos(multi_x),tf.math.sin(multi_x)])
+    return tf.keras.Model(inputs=input_x, outputs=outputs,name='positional_encoding_k%s' % cutoff)
 
 
 def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, n_switch=4,cutoff = 8, ensemble_size=2,inward_depth=1,switch_dim=16,inward_width=8,kernelKWarg={}):
@@ -41,7 +41,7 @@ def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, n_switch=4
 
     encoding = torus_positional_encoding(dim=dim,cutoff=cutoff)
     x,t = tf.split(input_x,[dim,1],axis=-1)
-    input_encoded_x =  tf.Concatenate()([x,encoding(x),t])
+    input_encoded_x =  tf.keras.layers.Concatenate()([x,encoding(x),t])
 
     switch_commands = tf.split(input_command, n_switch, axis=1)
     flow_family = [

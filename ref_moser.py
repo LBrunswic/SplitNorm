@@ -11,7 +11,7 @@ now = datetime.datetime.now()
 date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 T = time.time()
-EPOCHS = 150
+EPOCHS = 400
 DISTRIBUTION_DIM = 2
 # CHANNEL_DIM = 1
 COMMAND_DIM = 0
@@ -25,29 +25,18 @@ ARCH = 0
 
 switch_arch = [
     [
-        ConvolutionalKernel.CommandedConstructors.commanded_switched_ensemble_sequential_dense,
+        ConvolutionalKernel.CommandedConstructors.commanded_switched_ensemble_sequential_dense_with_encoding,
         {
             'dim' : DISTRIBUTION_DIM,
-            'ensemble_size' : 2,
+            'ensemble_size' : 1,
+            'cutoff' : 8,
             'n_switch' : 1,
             'inward_depth' : 4,
-            'inward_width' : 8,
-            'switch_dim' : 8,
+            'inward_width' : 16,
+            'switch_dim' : 256,
             'kernelKWarg' : {'activation': tf.keras.activations.tanh},
         }
     ],
-    [
-        ConvolutionalKernel.CommandedConstructors.commanded_switched_ensemble_sequential_dense,
-         {
-            'dim' : DISTRIBUTION_DIM,
-            'ensemble_size' : 2,
-            'n_switch' : 3,
-            'inward_depth' : 1,
-            'inward_width' : 16,
-            'switch_dim' : 16,
-            'kernelKWarg' : {'activation': tf.keras.activations.tanh},
-        }
-    ]
 ]
 
 ffjord_core = ConvolutionalKernel.utils.build(switch_arch[ARCH])
@@ -77,26 +66,13 @@ channeller_archs = [
             'distribution_dim': DISTRIBUTION_DIM,
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
-            'width': 8,
-            'depth': 3,
+            'width': 1,
+            'depth': 1,
             'kernelKWarg': {'activation': tf.keras.layers.LeakyReLU()},
             # 'final_activation' : tf.keras.layers.Activation('softmax')
             'finite_set': tf.eye(infra_command)
         }
     ],
-    [
-        ConvolutionalKernel.ChannellerConstructors.channeller_sequential_finite,
-        {
-            'distribution_dim': DISTRIBUTION_DIM,
-            'channel_dim': infra_command,
-            'command_dim': COMMAND_DIM,
-            'width': 1,
-            'depth': 1,
-            'kernelKWarg': {'activation': tf.keras.layers.LeakyReLU()},
-            # 'final_activation' : tf.keras.layers.Activation('softmax')
-            'finite_set': ConvolutionalKernel.utils.switch_commands(switch_arch[1][1]['ensemble_size'],switch_arch[1][1]['n_switch'])
-        }
-    ]
 ]
 
 conv_kernel_arch = {
@@ -130,6 +106,7 @@ base_distributionKWarg = {
          'scale_diag' : tf.ones(DISTRIBUTION_DIM)
     }
 base_distribution = tfd.MultivariateNormalDiag(**base_distributionKWarg)
+
 
 
 
