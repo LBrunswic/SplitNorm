@@ -27,7 +27,7 @@
 
 ### Reference architectures
 - [ ] Choice of a reference small architecture MNIST/CIFAR capable
-- [ ] Choice of a reference architecture for
+- [x] Choice of a reference architecture for high res pictures  (Moser flow paper FFJORD ref)
 
 ### Description of test of influence of relative dimension of Channel space / distribution dimension
 - [ ] Elementary script
