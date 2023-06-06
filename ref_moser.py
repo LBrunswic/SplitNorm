@@ -30,6 +30,7 @@ switch_arch = [
             'dim' : DISTRIBUTION_DIM,
             'ensemble_size' : 1,
             'cutoff' : 8,
+            'add_x':False,
             'n_switch' : 1,
             'inward_depth' : 4,
             'inward_width' : 16,
