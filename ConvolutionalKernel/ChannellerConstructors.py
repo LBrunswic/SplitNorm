@@ -28,3 +28,10 @@ def channeller_sequential_finite(finite_set=None, distribution_dim=None,channel_
     bc_finite_set = tf.broadcast_to(finite_set,tf.where([True,True,False],tf.shape(weights),[0,0,channel_dim]))
     outputs = tf.keras.layers.Concatenate(axis=-1)([bc_finite_set,tf.keras.layers.Activation('softmax')(weights)])
     return tf.keras.Model(inputs=inputs, outputs=outputs,name="channeller")
+
+def channeller_trivial(distribution_dim=None, channel_dim=None, command_dim=None):
+    distribution_input = tf.keras.layers.Input(shape=(distribution_dim,))
+    command_input = tf.keras.layers.Input(shape=(command_dim,))
+    inputs = (distribution_input,command_input)
+    outputs = tf.reshape(0*tf.reduce_sum(distribution_input,axis=1)+0*tf.reduce_sum(command_input,axis=1),(-1,1,1)) + tf.ones((1,1,channel_dim+1))
+    return tf.keras.Model(inputs=inputs, outputs=outputs,name='channeller')
