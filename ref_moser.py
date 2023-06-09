@@ -142,8 +142,7 @@ def gen_sample_generator(weighted_data, batch_size, delta_x, delta_y, max_batch_
     batch_slice = [batch_size]
     if batch_size > max_batch_slice_size:
         batch_slice = [max_batch_slice_size for _ in range(batch_size//max_batch_slice_size)] + [ x for x in [batch_size%max_batch_slice_size] if x > 0]
-    print(batch_slice)
-
+    # print(batch_slice)
     def gen():
         while True:
             T = time.time()
@@ -155,9 +154,9 @@ def gen_sample_generator(weighted_data, batch_size, delta_x, delta_y, max_batch_
                 axis=0
             )
             noise = tf.random.uniform([batch_size,DISTRIBUTION_DIM])*noise_scale
-            print('samples',samples.shape)
-            print('data:',weighted_data.shape)
-            print('noise',noise.shape)
+            # print('samples',samples.shape)
+            # print('data:',weighted_data.shape)
+            # print('noise',noise.shape)
             chosen = tf.gather(weighted_data,samples)
             weights = chosen[:,:1]**(1-p)
             coord = chosen[:,1:1+DISTRIBUTION_DIM]+noise
