@@ -28,10 +28,11 @@ class CommandedTransformedDistribution(tf.keras.Model):
         return self._sample(command_batch)
 
     def train_step(self, weighted_sample_command_batch):
-        weight_batch, sample_batch, command_batch = tf.split(
-            weighted_sample_command_batch,[1,self.distribution_dim,-1],
-            axis=-1
-        )
+        # weight_batch, sample_batch, command_batch = tf.split(
+        #     weighted_sample_command_batch,[1,self.distribution_dim,-1],
+        #     axis=-1
+        # )
+        weight_batch, sample_batch, command_batch = weighted_sample_command_batch
         weight_batch=self.reshape(weight_batch)
         trainable_var = self.trainable_variables
         with tf.GradientTape() as tape:
@@ -181,103 +182,104 @@ class ConvKernel(tf.keras.Model):
 
 class HigherConvKernel(tf.keras.Model):
     """ Convolutional Kernel taking a quantized distribution as input."""
-def __init__(self, kernel_ensemble, channeller, commander, quantization_dim=None,distribution_dim=2, channel_dim=0, command_dim=0,name='ConvFlow'):
-    super(HigherConvKernel, self).__init__(name=name)
-    self.kernel_ensemble = kernel_ensemble
-    self.channeller = channeller
-    self.commander = commander
-    self.channel_dim = channel_dim
-    self.command_dim = command_dim
-    self.distribution_dim = distribution_dim
+    def __init__(self, kernel_ensemble=None, channeller=None, commander=None, quantization_dim=None,distribution_dim=2, channel_dim=0, command_dim=0,name='ConvFlow'):
+        super(HigherConvKernel, self).__init__(name=name)
+        self.kernel_ensemble = kernel_ensemble
+        self.channeller = channeller
+        self.commander = commander
+        self.channel_dim = channel_dim
+        self.command_dim = command_dim
+        self.distribution_dim = distribution_dim
+        self.quantization_dim = quantization_dim
 
-def build_dist(self,base_distribution):
-    transformed_distribution = self.kernel_ensemble.build_dist(base_distribution)
-    reshape = tf.keras.layers.Reshape((1,1))
-    concat_prob = tf.keras.layers.Concatenate(axis=-2)
-    reshape_total = tf.keras.layers.Reshape((self.quantization_dim,1))
-    concat_total = tf.keras.layers.Concatenate(axis=-1)
-    reshape_command = tf.keras.layers.Reshape((1,-1))
-    dot = tf.keras.layers.Dot(axes=-1)
+    def build_dist(self,base_distribution):
+        transformed_distribution = self.kernel_ensemble.build_dist(base_distribution)
+        reshape = tf.keras.layers.Reshape((1,1))
+        concat_prob = tf.keras.layers.Concatenate(axis=-2)
+        reshape_total = tf.keras.layers.Reshape((self.quantization_dim,1))
+        concat_total = tf.keras.layers.Concatenate(axis=-1)
+        reshape_command = tf.keras.layers.Reshape((1,-1))
+        dot = tf.keras.layers.Dot(axes=-1)
 
-    @tf.function
-    def _aux(batch_quantized_dist_flat, command_batch_flat):
-        return batch_quantized_dist_flat[:,-1]*tf.reshape(transformed_distribution.score(batch_quantized_dist_flat[:,:-1],command_batch_flat),(-1,))
+        @tf.function
+        def _aux(batch_quantized_dist_flat, command_batch_flat):
+            return batch_quantized_dist_flat[:,-1]*tf.reshape(transformed_distribution.score(batch_quantized_dist_flat[:,:-1],command_batch_flat),(-1,))
 
-    @tf.function
-    def _score(batch_quantized_dist,command_batch):
-        # A batch of distributions, command is given. Distribution are given
-        # in a quantized way eg a batch of weighted samples of the distribution
-        # is given. Therefore the input has shape
-        #           ( batch_size, quantization_dim, distribution_dim + 1)
-        # The Channeller take the whole as input  and return a batch of channels thus
-        #  ( batch_size, channel_batch_size, channel_dim +1)
-        # the channel_batch (without the weights) is split to given a list of
-        # ( batch_size, channel_dim)
-        # fed to the commander which provides
-        # (batch_size, command_dim)
-        #  we want to feed  (batch_size, quantization_dim, distribution_dim+1) efficiently
-        # to the kernel below we thus reshape into (batch*quantization_dim,distribution_dim+1)
-        # Also the command has to be broadcast_to (batch_size,quantization_dim,command_dim)
-        # and reshaped the same way
-        batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
-        weighted_channels_batch = self.channeller(batch_quantized_dist_no_coord,command_batch) # (data_batch_size,channel_batch_size,channel_dim+1)
-        A = []
-        for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
-            batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
-            #(data_batch_size*quant_dim,dim+1)
+        @tf.function
+        def _score(batch_quantized_dist,command_batch):
+            # A batch of distributions, command is given. Distribution are given
+            # in a quantized way eg a batch of weighted samples of the distribution
+            # is given. Therefore the input has shape
+            #           ( batch_size, quantization_dim, distribution_dim + 1)
+            # The Channeller take the whole as input  and return a batch of channels thus
+            #  ( batch_size, channel_batch_size, channel_dim +1)
+            # the channel_batch (without the weights) is split to given a list of
+            # ( batch_size, channel_dim)
+            # fed to the commander which provides
+            # (batch_size, command_dim)
+            #  we want to feed  (batch_size, quantization_dim, distribution_dim+1) efficiently
+            # to the kernel below we thus reshape into (batch*quantization_dim,distribution_dim+1)
+            # Also the command has to be broadcast_to (batch_size,quantization_dim,command_dim)
+            # and reshaped the same way
+            batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
+            weighted_channels_batch = self.channeller(batch_quantized_dist_no_coord,command_batch) # (data_batch_size,channel_batch_size,channel_dim+1)
+            A = []
+            for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
+                batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
+                #(data_batch_size*quant_dim,dim+1)
 
-            command_dim = channel_batch.shape[1]
-            x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.commander(channel_batch,command_batch))
-            #    (batch_size,quant_dim,1)  +  (batch_size,1,command_dim) = (data_batch_size,quant_dim,command_dim)
-            # TODO 1  : replace by a dynamic shape broadcast_to
-            # https://stackoverflow.com/questions/57716363/explicit-broadcasting-of-variable-batch-size-tensor
+                command_dim = channel_batch.shape[1]
+                x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.commander(channel_batch,command_batch))
+                #    (batch_size,quant_dim,1)  +  (batch_size,1,command_dim) = (data_batch_size,quant_dim,command_dim)
+                # TODO 1  : replace by a dynamic shape broadcast_to
+                # https://stackoverflow.com/questions/57716363/explicit-broadcasting-of-variable-batch-size-tensor
 
-            command_batch_flat = tf.reshape(x,(-1,command_dim))
-            # (batch_size*quant_dim,command_dim)
+                command_batch_flat = tf.reshape(x,(-1,command_dim))
+                # (batch_size*quant_dim,command_dim)
 
-            s = _aux(batch_quantized_dist_flat, command_batch_flat)
-            # (data_batch_size*quant_dim,dim+1),(batch_size*quant_dim,command_dim) -> (batch_size*quant_dim,)
+                s = _aux(batch_quantized_dist_flat, command_batch_flat)
+                # (data_batch_size*quant_dim,dim+1),(batch_size*quant_dim,command_dim) -> (batch_size*quant_dim,)
 
-            a=tf.reduce_sum(tf.reshape(s,(-1,quantization_dim,1)),axis=1)
-            # (batch_size*quant_dim,)  ->  (batch_size,quant_dim,1) -> (batch_size,1)
+                a=tf.reduce_sum(tf.reshape(s,(-1,quantization_dim,1)),axis=1)
+                # (batch_size*quant_dim,)  ->  (batch_size,quant_dim,1) -> (batch_size,1)
 
-            A.append(a)
+                A.append(a)
 
-        scores = concat_total(A)  #(batch_size,command_dim)
-        #[(batch_size,1) for _ in range(channel_batch_size)] -> (batch_size,channel_batch_size)
+            scores = concat_total(A)  #(batch_size,command_dim)
+            #[(batch_size,1) for _ in range(channel_batch_size)] -> (batch_size,channel_batch_size)
 
-        weight_batch = weighted_channel_batch[:, :, -1]
-        # (batch_size,channel_batch_size)
+            weight_batch = weighted_channel_batch[:, :, -1]
+            # (batch_size,channel_batch_size)
 
-        score = dot([scores, weight_batch])
-        # ()
-        return
+            score = dot([scores, weight_batch])
+            # ()
+            return
 
 
-    def _prob(sample_batch,command_batch,*args,**kwargs):
-        weighted_channel_batch = self.channeller((sample_batch, command_batch))
-        # (data_batch_size,command_batch_size,command_dim+1)
-        A = [
-            self.reshape(transformed_distribution.prob(sample_batch, self.commander((channel_batch, command_batch)),*args, **kwargs))
-            for channel_batch in tf.unstack(weighted_channel_batch[:, :, :-1], axis=1)
-        ]
-        probs = self.concat(A)
-        weight_batch = weighted_channel_batch[:, :, -1]
-        return self.dot([probs, weight_batch])
+        def _prob(sample_batch,command_batch,*args,**kwargs):
+            weighted_channel_batch = self.channeller((sample_batch, command_batch))
+            # (data_batch_size,command_batch_size,command_dim+1)
+            A = [
+                self.reshape(transformed_distribution.prob(sample_batch, self.commander((channel_batch, command_batch)),*args, **kwargs))
+                for channel_batch in tf.unstack(weighted_channel_batch[:, :, :-1], axis=1)
+            ]
+            probs = self.concat(A)
+            weight_batch = weighted_channel_batch[:, :, -1]
+            return self.dot([probs, weight_batch])
 
-    def _sample(channel_command_batch,*args,**kwargs):
-        samples = transformed_distribution.sample(
-            self.commander(tf.split(channel_command_batch,[self.channel_dim,self.command_dim],axis=-1)),
-            *args,
-            **kwargs
+        def _sample(channel_command_batch,*args,**kwargs):
+            samples = transformed_distribution.sample(
+                self.commander(tf.split(channel_command_batch,[self.channel_dim,self.command_dim],axis=-1)),
+                *args,
+                **kwargs
+            )
+            return samples
+
+        return CommandedTransformedDistribution(
+            transformed_distribution,
+            _score,
+            _prob,
+            _sample,
+            command_dim=self.command_dim,
+            distribution_dim=self.distribution_dim
         )
-        return samples
-
-    return CommandedTransformedDistribution(
-        transformed_distribution,
-        _score,
-        _prob,
-        _sample,
-        command_dim=self.command_dim,
-        distribution_dim=self.distribution_dim
-    )

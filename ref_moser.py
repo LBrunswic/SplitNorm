@@ -34,7 +34,7 @@ ARCH = 0
 LR = 5*1e-3
 cutoff = 0
 add_x = True
-TEST = False
+TEST = True
 p = 0.5
 
 if TEST:
@@ -137,35 +137,32 @@ transformed_distribution = ConvKernel.build_dist(base_distribution)
 
 def gen_sample_generator(weighted_data, batch_size, delta_x, delta_y, max_batch_slice_size=2**11,p=p):
     val = weighted_data[:, 0]**p
-    val = val/np.sum(val)
+    val = tf.constant(val.reshape(1,-1)/np.sum(val))
     noise_scale = np.array([[delta_x,delta_y]])
     batch_slice = [batch_size]
     if batch_size > max_batch_slice_size:
         batch_slice = [max_batch_slice_size for _ in range(batch_size//max_batch_slice_size)] + [ x for x in [batch_size%max_batch_slice_size] if x > 0]
-    # print(batch_slice)
+    print(batch_slice)
 
     def gen():
         while True:
             T = time.time()
             samples = tf.concat(
                 [
-                    tf.reshape(tf.random.categorical(tf.math.log(1e-8+val.reshape(1,-1)), batch_slice_size), (-1,))
+                    tf.reshape(tf.random.categorical(tf.math.log(1e-8+val), batch_slice_size), (-1,))
                     for batch_slice_size in batch_slice
                 ],
                 axis=0
             )
             noise = tf.random.uniform([batch_size,DISTRIBUTION_DIM])*noise_scale
-            # print('samples',samples.shape)
-            # print('data:',weighted_data.shape)
-            # print('noise',noise.shape)
-            res = tf.concat(
-                [
-                    weighted_data[samples][:,:1]**(1-p),
-                    weighted_data[samples][:,1:1+DISTRIBUTION_DIM]+noise,
-                    weighted_data[samples][:,1+DISTRIBUTION_DIM:]
-                ],
-                axis=1
-            )
+            print('samples',samples.shape)
+            print('data:',weighted_data.shape)
+            print('noise',noise.shape)
+            chosen = tf.gather(weighted_data,samples)
+            weights = chosen[:,:1]**(1-p)
+            coord = chosen[:,1:1+DISTRIBUTION_DIM]+noise
+            command = chosen[:,1+DISTRIBUTION_DIM:]
+            res = (weights,coord,command)
             print('batch generation time:',time.time()-T)
             yield res
     return gen()
@@ -181,15 +178,23 @@ plt.matshow(tf.reshape(dataset_as_tensor[:,0],(xmax,ymax)))
 plt.savefig(os.path.join(SAVE_FOLDER,'target.png'))
 
 
+def gen():
+    while True:
+        yield tf.constant([0.]),tf.constant([0])
+
+output_signature = (
+    tf.TensorSpec(shape=(batch_size,1),dtype=tf.float32,name='weights'),
+    tf.TensorSpec(shape=(batch_size,DISTRIBUTION_DIM),dtype=tf.float32,name='coordinates'),
+    tf.TensorSpec(shape=(batch_size,COMMAND_DIM),dtype=tf.float32,name='command'),
+)
 dataset = tf.data.Dataset.from_generator(
     gen_sample_generator,
-    output_signature=tf.TensorSpec(shape=(batch_size,3),dtype=tf.float32),
+    output_signature=output_signature,
     args=(dataset_as_tensor,batch_size,delta_x,delta_y)
 )
+
 dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 dataset = dataset.cache()
-# dataset = dataset.shuffle(dataset_size)
-# dataset = dataset.batch(batch_size)
 transformed_distribution.compile(
     optimizer=tf.keras.optimizers.Adam(LR)
 )
