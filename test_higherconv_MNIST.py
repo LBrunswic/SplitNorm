@@ -23,7 +23,7 @@ date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 T = time.time()
 EPOCHS = 10000
-STEP_PER_EPOCH = 10
+STEP_PER_EPOCH = 100
 DISTRIBUTION_DIM = 2
 COMMAND_DIM = 0
 SAVE_FOLDER = os.path.join('results',date_time_str)
@@ -34,10 +34,18 @@ ARCH = 0
 LR = 5*1e-3
 cutoff = 0
 add_x = True
-TEST = True
+TEST = False
 p = 0.5
 
 if TEST:
+    inward_depth = 1
+    inward_width = 4
+    switch_dim = 4
+    batch_size = 28*28
+    dataset_size = 28*28
+    images = np.load('MNIST.npy')
+    QUANTIZATION_DIM = images[0].size
+else:
     inward_depth = 4
     inward_width = 16
     switch_dim = 16
@@ -45,14 +53,6 @@ if TEST:
     dataset_size = 28*28
     images = np.load('MNIST.npy')
     QUANTIZATION_DIM = images[0].size
-else:
-    inward_depth = 5
-    inward_width = 32
-    switch_dim = 32
-    IMAGE = 'nasa_galaxy_xsmall.png'
-    image = np.sum(iio.imread(os.path.join('images', IMAGE)),axis=-1)
-    batch_size = 2**12
-    dataset_size = image.size
 
 switch_arch = [
     [
@@ -89,11 +89,14 @@ kernel_ensemble = ConvolutionalKernel.FlowEnsemble(**kernel_ensemble_arch)
 
 channeller_archs = [
     [
-        ConvolutionalKernel.ChannellerConstructors.channeller_trivial,
+        ConvolutionalKernel.ChannellerConstructors.channeller_sequential_finite,
         {
-            'distribution_dim': DISTRIBUTION_DIM,
+            'distribution_dim':  (QUANTIZATION_DIM)*(DISTRIBUTION_DIM+1),
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
+            'width':16,
+            'depth':4,
+            'finite_set':ConvolutionalKernel.utils.switch_commands(switch_arch[0][1]['ensemble_size'],switch_arch[0][1]['n_switch'])
         }
     ],
 ]
@@ -137,15 +140,12 @@ base_distributionKWarg = {
 base_distribution = tfd.MultivariateNormalDiag(**base_distributionKWarg)
 transformed_distribution = ConvKernel.build_dist(base_distribution)
 
-#
-# def gen_sample_generator(pictures, batch_size, delta_x, delta_y, max_batch_slice_size=2**11,p=p):
-#     val = weighted_data[:, 0]**p
-#     val = val/np.sum(val)
+# #
+# def gen_sample_generator(dataset_as_tensor,commands, batch_size, delta_x, delta_y, max_batch_slice_size=2**11,p=p):
 #     noise_scale = np.array([[delta_x,delta_y]])
 #     batch_slice = [batch_size]
 #     if batch_size > max_batch_slice_size:
 #         batch_slice = [max_batch_slice_size for _ in range(batch_size//max_batch_slice_size)] + [ x for x in [batch_size%max_batch_slice_size] if x > 0]
-#     # print(batch_slice)
 #
 #     def gen():
 #         while True:
@@ -179,38 +179,45 @@ delta_x,delta_y = 4/xmax, 4/ymax
 limits = [(-2,2,delta_y),(-2,2,delta_x)]
 picture_coord = np.mgrid[[slice(a, b, e) for a, b, e in limits]].transpose().astype('float32').reshape(1,image.size,2)
 images_flat = images.reshape(dataset_size,image.size,1)
-np.concatenate([images_flat,np.broadcast_to(picture_coord,(dataset_size,image.size,2))],axis=-1)
+dataset_as_tensor = np.concatenate([np.broadcast_to(picture_coord,(dataset_size,image.size,2)),images_flat],axis=-1)
+dataset_as_tensor.shape
 commands.shape
-dataset_as_tensor = np.concatenate([image,sample,commands],axis=-1).reshape(xmax*ymax,-1)
-plt.matshow(tf.reshape(dataset_as_tensor[:,0],(xmax,ymax)))
-plt.savefig(os.path.join(SAVE_FOLDER,'target.png'))
-
-
-dataset = tf.data.Dataset.from_generator(
-    gen_sample_generator,
-    output_signature=tf.TensorSpec(shape=(batch_size,3),dtype=tf.float32),
-    args=(dataset_as_tensor,batch_size,delta_x,delta_y)
-)
+for i in range(3):
+    plt.matshow(tf.reshape(dataset_as_tensor[i,:,-1],(xmax,ymax)))
+    plt.savefig(os.path.join(SAVE_FOLDER,'target_%s.png' % i))
+    plt.clf()
+#
+# dataset = tf.data.Dataset.from_generator(
+#     gen_sample_generator,
+#     output_signature=tf.TensorSpec(shape=(batch_size,3),dtype=tf.float32),
+#     args=(dataset_as_tensor,batch_size,delta_x,delta_y)
+# )
+dataset = tf.data.Dataset.from_tensor_slices(dataset_as_tensor)
+dataset = dataset.batch(64)
 dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 dataset = dataset.cache()
 transformed_distribution.compile(
     optimizer=tf.keras.optimizers.Adam(LR)
 )
-
+a = dataset.as_numpy_iterator()
+next(a).shape
 for epoch in range(EPOCHS):
     i=0
     T = time.time()
     for batch in dataset:
+        print(batch.shape)
         if i > STEP_PER_EPOCH:
             break
         L = time.time()
-        transformed_distribution.train_step(batch)
+        transformed_distribution.train_step((tf.ones((64,),dtype=tf.float32),batch,tf.zeros((64,0),dtype=tf.float32)))
         i+=1
         print("epoch %s, batch %s done in %s seconds        " % (epoch,i,time.time()-L))
-    transformed_distribution.display_density(
-        name=os.path.join(SAVE_FOLDER,'epoch_%03d_number_%02d.png' % (0,epoch)),
-        limits=limits
-    )
+    densities = ConvKernel.reconstruction(dataset_as_tensor[:3],tf.zeros((3,0)))
+    for i in range(3):
+        plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
+        plt.savefig(os.path.join(SAVE_FOLDER,'target_%03d_epoch_%03d.png' % (i,epoch)))
+        plt.clf()
+
     print("\n","epoch %s, batch %s done in %s seconds" % (epoch,i,time.time()-T))
 
 print("done in %s seconds" % (time.time()-T))

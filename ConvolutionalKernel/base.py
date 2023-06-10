@@ -192,6 +192,53 @@ class HigherConvKernel(tf.keras.Model):
         self.distribution_dim = distribution_dim
         self.quantization_dim = quantization_dim
 
+    @tf.function
+    def _aux(self,batch_quantized_dist_flat, command_batch_flat):
+        return self.kernel.prob(batch_quantized_dist_flat,command_batch_flat)
+
+    def reconstruction(self,batch_quantized_dist,command_batch):
+        print(self)
+        print(batch_quantized_dist.shape)
+        print(command_batch.shape)
+        flat = tf.keras.layers.Flatten()
+        reshape_command = tf.keras.layers.Reshape((1,-1))
+        batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
+        weighted_channels_batch = self.channeller((flat(batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
+        A = []
+        for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
+            batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
+            #(data_batch_size*quant_dim,dim+1)
+
+            command_dim = channel_batch.shape[1]
+            x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.commander((channel_batch,command_batch)))
+            #    (batch_size,quant_dim,1)  +  (batch_size,1,command_dim) = (data_batch_size,quant_dim,command_dim)
+            # TODO 1  : replace by a dynamic shape broadcast_to
+            # https://stackoverflow.com/questions/57716363/explicit-broadcasting-of-variable-batch-size-tensor
+
+            command_batch_flat = tf.reshape(x,(-1,command_dim))
+            # (batch_size*quant_dim,command_dim)
+
+            # print(batch_quantized_dist_flat[:,:,:-1].shape)
+            # print(command_batch_flat.shape)
+            # s = transformed_distribution.prob(batch_quantized_dist_flat[:,:,:-1],command_batch_flat)
+            s = self._aux(batch_quantized_dist_flat[:,:-1], command_batch_flat)
+            # (data_batch_size*quant_dim,dim+1),(batch_size*quant_dim,command_dim) -> (batch_size*quant_dim,)
+
+            a = tf.reshape(s,(batch_size,quantization_dim,1))
+            # (batch_size*quant_dim,)  ->  (batch_size,quant_dim,1)
+
+            A.append(a)
+
+        channel_densities = tf.concat(A,axis=-1)
+        #[(batch_size,quant_dim,1) for _ in range(channel_batch_size)] -> (batch_size,quant_dim,channel_batch_size)
+
+        channel_weights = tf.reshape(weighted_channels_batch[:, :, -1],(batch_size,1,-1))
+        #(batch_size,channel_batch_size) -> (batch_size,1,channel_batch_size)
+
+        densities = tf.reduce_sum(channel_densities*channel_weights,axis=-1)
+        #(batch_size,quant_dim)
+        return densities
+
     def build_dist(self,base_distribution):
         transformed_distribution = self.kernel_ensemble.build_dist(base_distribution)
         reshape = tf.keras.layers.Reshape((1,1))
@@ -199,6 +246,7 @@ class HigherConvKernel(tf.keras.Model):
         reshape_total = tf.keras.layers.Reshape((self.quantization_dim,1))
         concat_total = tf.keras.layers.Concatenate(axis=-1)
         reshape_command = tf.keras.layers.Reshape((1,-1))
+        flat = tf.keras.layers.Flatten()
         dot = tf.keras.layers.Dot(axes=-1)
 
         @tf.function
@@ -222,14 +270,14 @@ class HigherConvKernel(tf.keras.Model):
             # Also the command has to be broadcast_to (batch_size,quantization_dim,command_dim)
             # and reshaped the same way
             batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
-            weighted_channels_batch = self.channeller(batch_quantized_dist_no_coord,command_batch) # (data_batch_size,channel_batch_size,channel_dim+1)
+            weighted_channels_batch = self.channeller((flat(batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
             A = []
             for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
                 batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
                 #(data_batch_size*quant_dim,dim+1)
 
                 command_dim = channel_batch.shape[1]
-                x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.commander(channel_batch,command_batch))
+                x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.commander((channel_batch,command_batch)))
                 #    (batch_size,quant_dim,1)  +  (batch_size,1,command_dim) = (data_batch_size,quant_dim,command_dim)
                 # TODO 1  : replace by a dynamic shape broadcast_to
                 # https://stackoverflow.com/questions/57716363/explicit-broadcasting-of-variable-batch-size-tensor
@@ -248,12 +296,12 @@ class HigherConvKernel(tf.keras.Model):
             scores = concat_total(A)  #(batch_size,command_dim)
             #[(batch_size,1) for _ in range(channel_batch_size)] -> (batch_size,channel_batch_size)
 
-            weight_batch = weighted_channel_batch[:, :, -1]
+            weight_batch = weighted_channels_batch[:, :, -1]
             # (batch_size,channel_batch_size)
 
             score = dot([scores, weight_batch])
             # ()
-            return
+            return score
 
 
         def _prob(sample_batch,command_batch,*args,**kwargs):
@@ -275,7 +323,7 @@ class HigherConvKernel(tf.keras.Model):
             )
             return samples
 
-        return CommandedTransformedDistribution(
+        out  = CommandedTransformedDistribution(
             transformed_distribution,
             _score,
             _prob,
@@ -283,3 +331,6 @@ class HigherConvKernel(tf.keras.Model):
             command_dim=self.command_dim,
             distribution_dim=self.distribution_dim
         )
+        self.kernel = transformed_distribution
+        self.transformed_distribution = out
+        return out

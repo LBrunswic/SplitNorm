@@ -12,7 +12,7 @@ def _aux_sequential_dense_gen(out_dim, hidden_width, depth, kernelKWarg=None):
     return tf.keras.Sequential(layers)
 
 def switch_commands(switch_size,n_switch):
-    channel_sample = switch_size**n_switch
+    # channel_sample = switch_size**n_switch
     base_choices = tf.eye(switch_size)
     return tf.stack([
         tf.concat(choice ,axis=0)

@@ -9,12 +9,12 @@ import imageio.v3 as iio
 from PIL import Image
 import sys
 
-
-
-GPU = 0
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    tf.config.set_visible_devices(gpus[GPU],'GPU')
+#
+#
+# GPU = 0
+# gpus = tf.config.list_physical_devices('GPU')
+# if gpus:
+#     tf.config.set_visible_devices(gpus[GPU],'GPU')
 
 tfd = tfp.distributions
 now = datetime.datetime.now()
@@ -31,10 +31,10 @@ os.makedirs(SAVE_FOLDER)
 model_folder = os.path.join(SAVE_FOLDER,'model')
 os.makedirs(model_folder)
 ARCH = 0
-LR = 5*1e-3
+LR = 1e-2
 cutoff = 0
 add_x = True
-TEST = True
+TEST = False
 p = 0.5
 
 if TEST:
@@ -43,15 +43,17 @@ if TEST:
     switch_dim = 16
     batch_size = 28*28
     dataset_size = 28*28
-    image = tf.keras.datasets.mnist.load_data()[0][0][0]
+    image = tf.keras.datasets.mnist.load_data()[0][0][1]
 
 else:
-    inward_depth = 5
-    inward_width = 32
-    switch_dim = 32
+    inward_depth = 4
+    inward_width = 16
+    switch_dim = 16
     IMAGE = 'nasa_galaxy_xsmall.png'
-    image = np.sum(iio.imread(os.path.join('images', IMAGE)),axis=-1)
-    batch_size = 2**12
+    image = np.sum(iio.imread(os.path.join('images', IMAGE)),axis=-1).astype('float32')
+    # image = tf.keras.datasets.mnist.load_data()[0][0][1]
+    # batch_size = 2**10
+    batch_size = 2**11+2**10
     dataset_size = image.size
 
 switch_arch = [
@@ -59,7 +61,7 @@ switch_arch = [
         ConvolutionalKernel.CommandedConstructors.commanded_switched_ensemble_sequential_dense_with_encoding,
         {
             'dim' : DISTRIBUTION_DIM,
-            'ensemble_size' : 1,
+            'ensemble_size' : 3,
             'cutoff' : cutoff,
             'add_x':add_x,
             'n_switch' : 1,
@@ -92,12 +94,34 @@ commander_arch1 = {
     'output_dim' : infra_command,
 }
 channeller_archs = [
+    # [
+    #     ConvolutionalKernel.ChannellerConstructors.channeller_trivial,
+    #     {
+    #         'distribution_dim': DISTRIBUTION_DIM,
+    #         'channel_dim': infra_command,
+    #         'command_dim': COMMAND_DIM,
+    #     }
+    # ],
+    # [
+    #     ConvolutionalKernel.ChannellerConstructors.channeller_sequential,
+    #     {
+    #         'distribution_dim': DISTRIBUTION_DIM,
+    #         'channel_dim': infra_command,
+    #         'command_dim': COMMAND_DIM,
+    #         'channel_sample':3,
+    #         'width':4,
+    #         'depth':2,
+    #     }
+    # ],
     [
-        ConvolutionalKernel.ChannellerConstructors.channeller_trivial,
+        ConvolutionalKernel.ChannellerConstructors.channeller_sequential_finite,
         {
             'distribution_dim': DISTRIBUTION_DIM,
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
+            'width':16,
+            'depth':4,
+            'finite_set':ConvolutionalKernel.utils.switch_commands(switch_arch[0][1]['ensemble_size'],switch_arch[0][1]['n_switch'])
         }
     ],
 ]
@@ -148,7 +172,7 @@ def gen_sample_generator(weighted_data, batch_size, delta_x, delta_y, max_batch_
             T = time.time()
             samples = tf.concat(
                 [
-                    tf.reshape(tf.random.categorical(tf.math.log(1e-8+val), batch_slice_size), (-1,))
+                    tf.reshape(tf.random.categorical(tf.math.log(1e-8+val), batch_slice_size), (batch_slice_size,))
                     for batch_slice_size in batch_slice
                 ],
                 axis=0
@@ -197,7 +221,7 @@ dataset = dataset.cache()
 transformed_distribution.compile(
     optimizer=tf.keras.optimizers.Adam(LR)
 )
-
+limits = [(-2,2,delta_y),(-2,2,delta_x)]
 for epoch in range(EPOCHS):
     i=0
     T = time.time()
@@ -208,10 +232,12 @@ for epoch in range(EPOCHS):
         transformed_distribution.train_step(batch)
         i+=1
         print("epoch %s, batch %s done in %s seconds        " % (epoch,i,time.time()-L))
+    P = time.time()
     transformed_distribution.display_density(
         name=os.path.join(SAVE_FOLDER,'epoch_%03d_number_%02d.png' % (0,epoch)),
         limits=limits
     )
+    print('image generation :',time.time ()-P)
     print("\n","epoch %s, batch %s done in %s seconds" % (epoch,i,time.time()-T))
 
 print("done in %s seconds" % (time.time()-T))
