@@ -200,10 +200,9 @@ class HigherConvKernel(tf.keras.Model):
         print(self)
         print(batch_quantized_dist.shape)
         print(command_batch.shape)
-        flat = tf.keras.layers.Flatten()
         reshape_command = tf.keras.layers.Reshape((1,-1))
         batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
-        weighted_channels_batch = self.channeller((flat(batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
+        weighted_channels_batch = self.channeller(((batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
         A = []
         for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
             batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
@@ -270,7 +269,7 @@ class HigherConvKernel(tf.keras.Model):
             # Also the command has to be broadcast_to (batch_size,quantization_dim,command_dim)
             # and reshaped the same way
             batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
-            weighted_channels_batch = self.channeller((flat(batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
+            weighted_channels_batch = self.channeller(((batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
             A = []
             for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
                 batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))

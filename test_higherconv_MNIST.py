@@ -8,7 +8,7 @@ import time, os, datetime
 import imageio.v3 as iio
 from PIL import Image
 import sys
-
+# tf.config.optimizer.set_experimental_options({'disable_meta_optimizer':True})
 
 
 GPU = 0
@@ -35,22 +35,24 @@ LR = 5*1e-3
 cutoff = 0
 add_x = True
 TEST = False
-p = 0.5
+# p = 0.5
 
 if TEST:
     inward_depth = 1
     inward_width = 4
     switch_dim = 4
-    batch_size = 28*28
-    dataset_size = 28*28
+    batch_size = 32
+    ensemble_size = 1
+    # dataset_size = 28*28
     images = np.load('MNIST.npy')
     QUANTIZATION_DIM = images[0].size
 else:
-    inward_depth = 4
-    inward_width = 16
-    switch_dim = 16
-    batch_size = 28*28
-    dataset_size = 28*28
+    inward_depth = 3
+    inward_width = 8
+    switch_dim = 8
+    batch_size = 8
+    ensemble_size = 3
+    # dataset_size = 28*28
     images = np.load('MNIST.npy')
     QUANTIZATION_DIM = images[0].size
 
@@ -59,7 +61,7 @@ switch_arch = [
         ConvolutionalKernel.CommandedConstructors.commanded_switched_ensemble_sequential_dense_with_encoding,
         {
             'dim' : DISTRIBUTION_DIM,
-            'ensemble_size' : 1,
+            'ensemble_size' : ensemble_size,
             'cutoff' : cutoff,
             'add_x':add_x,
             'n_switch' : 1,
@@ -86,17 +88,18 @@ kernel_ensemble_arch = {
 }
 kernel_ensemble = ConvolutionalKernel.FlowEnsemble(**kernel_ensemble_arch)
 
-
+channeller_input_shape = (QUANTIZATION_DIM,DISTRIBUTION_DIM+1)
 channeller_archs = [
     [
-        ConvolutionalKernel.ChannellerConstructors.channeller_sequential_finite,
+        ConvolutionalKernel.ChannellerConstructors.channeller_sequential,
         {
-            'distribution_dim':  (QUANTIZATION_DIM)*(DISTRIBUTION_DIM+1),
+            'distribution_shape': channeller_input_shape,
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
+            'channel_sample':3,
             'width':16,
-            'depth':4,
-            'finite_set':ConvolutionalKernel.utils.switch_commands(switch_arch[0][1]['ensemble_size'],switch_arch[0][1]['n_switch'])
+            'depth':2,
+            'keep':(...,-1)
         }
     ],
 ]
@@ -193,7 +196,7 @@ for i in range(3):
 #     args=(dataset_as_tensor,batch_size,delta_x,delta_y)
 # )
 dataset = tf.data.Dataset.from_tensor_slices(dataset_as_tensor)
-dataset = dataset.batch(64)
+dataset = dataset.batch(batch_size)
 dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 dataset = dataset.cache()
 transformed_distribution.compile(
@@ -204,12 +207,13 @@ next(a).shape
 for epoch in range(EPOCHS):
     i=0
     T = time.time()
+    dataset.shuffle(60000)
     for batch in dataset:
         print(batch.shape)
         if i > STEP_PER_EPOCH:
             break
         L = time.time()
-        transformed_distribution.train_step((tf.ones((64,),dtype=tf.float32),batch,tf.zeros((64,0),dtype=tf.float32)))
+        transformed_distribution.train_step((tf.ones((batch_size,),dtype=tf.float32),batch,tf.zeros((batch_size,0),dtype=tf.float32)))
         i+=1
         print("epoch %s, batch %s done in %s seconds        " % (epoch,i,time.time()-L))
     densities = ConvKernel.reconstruction(dataset_as_tensor[:3],tf.zeros((3,0)))
