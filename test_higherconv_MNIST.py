@@ -23,7 +23,7 @@ date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 T = time.time()
 EPOCHS = 10000
-STEP_PER_EPOCH = 100
+STEP_PER_EPOCH = 10
 DISTRIBUTION_DIM = 2
 COMMAND_DIM = 0
 SAVE_FOLDER = os.path.join('results',date_time_str)
@@ -45,17 +45,18 @@ if TEST:
     ensemble_size = 1
     # dataset_size = 28*28
     images = np.load('MNIST.npy')
-    QUANTIZATION_DIM = images[0].size
+    # QUANTIZATION_DIM = images[0].size
+    QUANTIZATION_DIM = 8
 else:
-    inward_depth = 3
-    inward_width = 8
-    switch_dim = 8
-    batch_size = 8
+    inward_depth = 4
+    inward_width = 64
+    switch_dim = 64
+    batch_size = 32
     ensemble_size = 3
     # dataset_size = 28*28
-    images = np.load('MNIST.npy')
-    # QUANTIZATION_DIM = images[0].size
-    QUANTIZATION_DIM = 64
+    images = np.load('MNIST.npy')[:8]
+    QUANTIZATION_DIM = images[0].size
+    # QUANTIZATION_DIM = 64
 
 
 switch_arch = [
@@ -78,9 +79,15 @@ switch_arch = [
 ffjord_core = ConvolutionalKernel.utils.build(switch_arch[ARCH])
 infra_command = ffjord_core.command_dim
 
+solver_param ={
+    'first_step_size' : 0.1,
+    'max_num_steps': 1000,
+    'atol':1e-2,
+    'rtol':1e-3,
+}
 FFJORD_dorpri_arch1 = {
     'state_time_derivative_fn': ffjord_core,
-    'ode_solve_fn': tfp.math.ode.DormandPrince().solve,
+    'ode_solve_fn': tfp.math.ode.DormandPrince(**solver_param).solve,
     'trace_augmentation_fn': tfp.bijectors.ffjord.trace_jacobian_exact
 }
 kernel_ensemble_arch = {
@@ -100,8 +107,9 @@ channeller_archs = [
             'command_dim': COMMAND_DIM,
             'channel_sample':2,
             'width':16,
-            'depth':2,
+            'depth':3,
             'keep':(...,-1),
+            'final_activation':tf.keras.activations.tanh
         }
     ],
 ]
@@ -152,14 +160,18 @@ def gen_sample_generator(pictures_coord,commands, batch_size, quant_dim, delta_x
     rng = np.random.default_rng()
     indices = np.arange(pictures_coord.shape[0])
     weights = tf.ones((batch_size,1))
+
     while True:
         T = time.time()
         batch_indices = rng.choice(indices,size=batch_size)
         picture_batch = pictures_coord[batch_indices]
         val = picture_batch[:,:, field_coord]
         val = val/np.sum(val,axis=1).reshape(-1,1)
-        samples =  tf.random.categorical(tf.math.log(1e-8+val), quant_dim)
-        chosen = tf.gather(picture_batch,samples,batch_dims=1)
+        if quant_dim==picture_batch.shape[1]:
+            chosen = picture_batch
+        else:
+            samples =  tf.random.categorical(tf.math.log(1e-8+val), quant_dim)
+            chosen = tf.gather(picture_batch,samples,batch_dims=1)
 
         noise = tf.random.uniform([batch_size,quant_dim,DISTRIBUTION_DIM])*noise_scale
         coord = tf.concat([chosen[:,:,:DISTRIBUTION_DIM]+noise,chosen[:,:,field_coord:]],axis=-1)

@@ -226,7 +226,7 @@ class HigherConvKernel(tf.keras.Model):
         self.distribution_dim = distribution_dim
         self.quantization_dim = quantization_dim
 
-    @tf.function
+    # @tf.function
     def _aux(self,batch_quantized_dist_flat, command_batch_flat):
         return self.kernel.prob(batch_quantized_dist_flat,command_batch_flat)
 
@@ -282,7 +282,7 @@ class HigherConvKernel(tf.keras.Model):
         flat = tf.keras.layers.Flatten()
         dot = tf.keras.layers.Dot(axes=-1)
 
-        @tf.function
+        # @tf.function
         def _aux(batch_quantized_dist_flat, command_batch_flat):
             return batch_quantized_dist_flat[:,-1]*tf.reshape(transformed_distribution.score(batch_quantized_dist_flat[:,:-1],command_batch_flat),(-1,))
 
