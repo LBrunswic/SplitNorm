@@ -14,6 +14,8 @@
 - [ ] Choice of datasets for showcase (2 scales of images datasets, Finance dataset, manifold learning)
 - [ ] Choice of metrics for each (number of parameters, likelyhood, L2 norm, benefit)
 - [ ] Review  of SOTA scores for each metrics/datasets
+### Benchmarking
+- [ ] Write test script dedictated to MNIST/CIFAR
 
 ## Commanded layers
 - [ ] reimplement based Dense/CNN layers with command kwarg
@@ -22,11 +24,11 @@
 ## Tests
 ### Basic tests
 - [x] test script of convolutional kernel training (simple example)
-- [ ] test script of convolutional kernel training (involved example)
-- [ ] test script of HigherConvKernels with visualization of secondary normalization
+- [x] test script of convolutional kernel training (involved example)
+- [x] test script of HigherConvKernels with visualization of secondary normalization
 
 ### Reference architectures
-- [ ] Choice of a reference small architecture MNIST/CIFAR capable
+- [x] Choice of a reference small architecture MNIST/CIFAR capable
 - [x] Choice of a reference architecture for high res pictures  (Moser flow paper FFJORD ref)
 
 ### Description of test of influence of relative dimension of Channel space / distribution dimension
@@ -67,6 +69,7 @@ The goal is to have building blocks for flows
   - [x] some tests of  simple variations on TF ODE solver code
   - [ ] Implementation of other methods
   - [ ] Some theoretical analysis of the issue at hand, SOTA and potential improvements
+- [ ] Solve the Jacobian computation issue when fed virtual input
 
 # Secondary normalization and generation
 - [ ] implement a class designed for training of iterated normalization
@@ -77,7 +80,7 @@ The goal is to have building blocks for flows
 - [ ] How Higher Convolution compares to VAE/GAN especially regarding multi-modal distribution (why does those methods have mutli-mode issues why this is not the case here?)
 
 ## Total Normalization loss
-- [ ] Better computation of the Total normalization loss, in particular the channeled self-entropy
+- [x] Better computation of the Total normalization loss, in particular the channeled self-entropy
 - [ ] Find regularization methods for continuously parameterized flows
 - [ ] Dimensional analysis
 ## Intrinsic dataset dimension
