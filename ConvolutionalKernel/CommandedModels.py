@@ -6,8 +6,8 @@ class CommandedMLP_ODE(tf.keras.Model):
         self.kernel = kernel
         self.command_dim = command_dim
 
-    @tf.function(jit_compile=True)
+    # @tf.function()
     def call(self, t, x,command=None):
         t_x = tf.concat([t+0*x[:,:1], x], -1)
-        print(t_x.shape)
+        # print(t_x.shape)
         return self.kernel((t_x,command))

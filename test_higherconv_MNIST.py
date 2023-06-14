@@ -101,7 +101,7 @@ channeller_archs = [
             'channel_sample':2,
             'width':16,
             'depth':2,
-            'keep':(...,-1)
+            'keep':(...,-1),
         }
     ],
 ]
@@ -151,23 +151,25 @@ def gen_sample_generator(pictures_coord,commands, batch_size, quant_dim, delta_x
     noise_scale = np.array([[[delta_x,delta_y]]])
     rng = np.random.default_rng()
     indices = np.arange(pictures_coord.shape[0])
-    weights = tf.ones(batch_size,1)
-    def gen():
-        while True:
-            T = time.time()
-            batch_indices = rng.choice(indices,size=batch_size)
-            picture_batch = pictures_coord[batch_indices]
-            val = picture_batch[:,:, field_coord]
-            val = val/np.sum(val,axis=1).reshape(-1,1)
-            samples =  tf.random.categorical(tf.math.log(1e-8+val), quant_dim)
-            chosen = tf.gather(picture_batch,samples,batch_dims=1)
+    weights = tf.ones((batch_size,1))
+    while True:
+        T = time.time()
+        batch_indices = rng.choice(indices,size=batch_size)
+        picture_batch = pictures_coord[batch_indices]
+        val = picture_batch[:,:, field_coord]
+        val = val/np.sum(val,axis=1).reshape(-1,1)
+        samples =  tf.random.categorical(tf.math.log(1e-8+val), quant_dim)
+        chosen = tf.gather(picture_batch,samples,batch_dims=1)
 
-            noise = tf.random.uniform([batch_size,quant_dim,DISTRIBUTION_DIM])*noise_scale
-            coord = chosen[:,:,:DISTRIBUTION_DIM]+noise
-            command = tf.gather(commands,batch_indices)
-            res = (weights,coord,command)
-            yield res
-    return gen()
+        noise = tf.random.uniform([batch_size,quant_dim,DISTRIBUTION_DIM])*noise_scale
+        coord = tf.concat([chosen[:,:,:DISTRIBUTION_DIM]+noise,chosen[:,:,field_coord:]],axis=-1)
+        command = tf.gather(commands,batch_indices)
+        res = (weights,coord,command)
+        print(weights.shape)
+        print(coord.shape)
+        print(command.shape)
+        yield res
+
 
 dataset_size = images.shape[0]
 image = images[0]
@@ -179,8 +181,6 @@ limits = [(-2,2,delta_y),(-2,2,delta_x)]
 picture_coord = np.mgrid[[slice(a, b, e) for a, b, e in limits]].transpose().astype('float32').reshape(1,image.size,2)
 images_flat = images.reshape(dataset_size,image.size,1)
 pictures_coord = np.concatenate([np.broadcast_to(picture_coord,(dataset_size,image.size,2)),images_flat],axis=-1)
-pictures_coord.shape
-commands.shape
 
 
 
@@ -199,21 +199,15 @@ dataset = tf.data.Dataset.from_generator(
     output_signature=output_signature,
     args=(pictures_coord,commands,batch_size,QUANTIZATION_DIM,delta_x,delta_y)
 )
-# dataset = tf.data.Dataset.from_tensor_slices(dataset_as_tensor)
-# dataset = dataset.batch(batch_size)
-dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-dataset = dataset.cache()
+
 transformed_distribution.compile(
     optimizer=tf.keras.optimizers.Adam(LR)
 )
-a = dataset.as_numpy_iterator()
-next(a).shape
+
 for epoch in range(EPOCHS):
     i=0
     T = time.time()
-    dataset.shuffle(60000)
     for batch in dataset:
-        print(batch.shape)
         if i > STEP_PER_EPOCH:
             break
         L = time.time()

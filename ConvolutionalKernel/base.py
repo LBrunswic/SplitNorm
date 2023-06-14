@@ -17,7 +17,7 @@ class CommandedTransformedDistribution(tf.keras.Model):
         self.command_dim = command_dim
         self.reshape = tf.keras.layers.Reshape((-1,))
 
-    @tf.function
+    # @tf.function
     def score(self,sample_batch,command_batch):
         return self._score(sample_batch,command_batch)
 
@@ -27,6 +27,14 @@ class CommandedTransformedDistribution(tf.keras.Model):
     def sample(self,command_batch):
         return self._sample(command_batch)
 
+    # @tf.function
+    def _pre_compile(self, weighted_sample_command_batch):
+            weight_batch, sample_batch, command_batch = weighted_sample_command_batch
+            weight_batch=self.reshape(weight_batch)
+            scores = self.reshape(self.score(sample_batch,command_batch))
+            scores = weight_batch*scores
+            loss = tf.reduce_mean(scores)
+            return loss
     def train_step(self, weighted_sample_command_batch):
         # weight_batch, sample_batch, command_batch = tf.split(
         #     weighted_sample_command_batch,[1,self.distribution_dim,-1],
@@ -88,7 +96,7 @@ class FlowEnsemble(tf.keras.Model):
     def build_dist(self,base_distribution,*build_args,**build_kwargs):
         transformed_distribution = tfd.TransformedDistribution(distribution=base_distribution, bijector=self.flow_family, *build_args, **build_kwargs)
 
-        @tf.function
+        # @tf.function
         def _score(sample_batch,command_batch):
             return -transformed_distribution.log_prob(
                 sample_batch,
@@ -125,7 +133,7 @@ class FlowEnsemble(tf.keras.Model):
 
 
 class ConvKernel(tf.keras.Model):
-    def __init__(self, kernel_ensemble, channeller, commander, channel_dim=0,distribution_dim=2, command_dim=0,name='ConvFlow'):
+    def __init__(self, kernel_ensemble, channeller, commander, channel_dim=0, distribution_dim=2, command_dim=0,name='ConvFlow'):
         super(ConvKernel, self).__init__(name=name)
         self.kernel_ensemble = kernel_ensemble
         self.channeller = channeller
@@ -136,20 +144,46 @@ class ConvKernel(tf.keras.Model):
         self.concat = tf.keras.layers.Concatenate(axis=-1)
         self.dot = tf.keras.layers.Dot(axes=-1)
         self.distribution_dim = self.kernel_ensemble.distribution_dim
-
+        self.channel_sample = channeller.output_shape[1]
+        print(self.channel_sample)
     def build_dist(self,base_distribution):
         transformed_distribution = self.kernel_ensemble.build_dist(base_distribution)
-        @tf.function
+
+        sample_batch = tf.keras.Input(shape=(self.distribution_dim,),name='dist_sample')
+        command_batch = tf.keras.Input(shape=(self.command_dim,),name='command')
+        channel_batch = tf.keras.Input(shape=(self.channel_dim,),name='channel')
+        inputs = (sample_batch,channel_batch,command_batch)
+        for x in (inputs):
+            print(x.name,x.shape)
+        outputs = (transformed_distribution.score(sample_batch,  self.commander((channel_batch, command_batch))))
+        # outputs = tf.keras.layers.Reshape((1,))(outputs)
+        # score_core = tf.keras.Model(inputs=inputs,outputs=ouputs)
+        #
+        # sample_batch = tf.keras.Input(shape=(self.distribution_dim,))
+        # command_batch = tf.keras.Input(shape=(self.command_dim,))
+        # channel_batchs = tf.keras.Input(shape=(self.channel_dim,))
+        # inputs = (sample_batch,channel_batch,command_batch)
+        # repeated_sample_batch = tf.keras.layers.RepeatVector(self.channel_sample)(sample_batch)
+        # repeated_command_batch = tf.keras.layers.RepeatVector(self.channel_sample)(command_batch)
+        # outputs = tf.keras.layers.TimeDistributed(score_core)((repeated_sample_batch,channel_batchs,repeated_command_batch))
+        # channelled_score = tf.keras.Model(inputs=inputs,outputs=outputs)
+        # print(channelled_score)
+        dot = tf.keras.layers.Dot(axes=(0,1))
+        # @tf.function
         def _score(sample_batch,command_batch):
             weighted_channel_batch = self.channeller((sample_batch, command_batch))
             # (data_batch_size,command_batch_size,command_dim+1)
+            print('sample',sample_batch.shape)
+            print('command',command_batch.shape)
+            print('channel',weighted_channel_batch[:,0,:-1].shape)
             A = [
                 self.reshape(transformed_distribution.score(sample_batch,  self.commander((channel_batch, command_batch))))
                 for channel_batch in tf.unstack(weighted_channel_batch[:, :, :-1], axis=1)
             ]
             scores = self.concat(A)
+            # A = channelled_score((sample_batch,weighted_channel_batch[:,:,-1],command_batch))
             weight_batch = weighted_channel_batch[:, :, -1]
-            return self.dot([scores, weight_batch])
+            return sel.dot([scores, weight_batch])
 
         def _prob(sample_batch,command_batch,*args,**kwargs):
             weighted_channel_batch = self.channeller((sample_batch, command_batch))
