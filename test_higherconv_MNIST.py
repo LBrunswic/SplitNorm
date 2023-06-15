@@ -55,11 +55,11 @@ if TEST:
     # QUANTIZATION_DIM = images[0].size
     QUANTIZATION_DIM = 8
 else:
-    inward_depth = 2
+    inward_depth = 4
     inward_width = 64
     switch_dim = inward_width
-    n_switch = 3
-    ensemble_size = 2
+    n_switch = 1
+    ensemble_size = 5
 
 
     # inward_depth = 4
@@ -257,7 +257,7 @@ for epoch in range(EPOCHS):
     densities = ConvKernel.reconstruction(pictures_coord[test_indices],tf.zeros((test_indices.size,0)))
     for i in range(10):
         plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
-        plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i,'epoch_%03d.png' % (i,epoch)))
+        plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i,'epoch_%03d.png' % epoch))
         plt.clf()
     with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
         np.save(f,ConvKernel.channeller((pictures_coord,commands)))
