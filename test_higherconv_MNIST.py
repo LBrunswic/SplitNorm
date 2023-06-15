@@ -22,8 +22,8 @@ date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 
 T = time.time()
-EPOCHS = 10000
-STEP_PER_EPOCH = 10
+EPOCHS = 1000
+STEP_PER_EPOCH = 20
 DISTRIBUTION_DIM = 2
 COMMAND_DIM = 0
 SAVE_FOLDER = os.path.join('results',date_time_str)
@@ -31,7 +31,7 @@ os.makedirs(SAVE_FOLDER)
 model_folder = os.path.join(SAVE_FOLDER,'model')
 os.makedirs(model_folder)
 ARCH = 0
-LR = 5*1e-3
+LR = 1e-3
 cutoff = 0
 add_x = True
 TEST = False
@@ -48,13 +48,24 @@ if TEST:
     # QUANTIZATION_DIM = images[0].size
     QUANTIZATION_DIM = 8
 else:
-    inward_depth = 4
+    inward_depth = 2
     inward_width = 64
-    switch_dim = 64
+    switch_dim = inward_width
+    n_switch = 3
+    ensemble_size = 2
+
+
+    # inward_depth = 4
+    # inward_width = 32
+    # switch_dim = inward_width
+    # n_switch = 1
+    # ensemble_size = 2
+
+
     batch_size = 32
-    ensemble_size = 3
+    # ensemble_size = 2
     # dataset_size = 28*28
-    images = np.load('MNIST.npy')[:8]
+    images = np.load('MNIST.npy')
     QUANTIZATION_DIM = images[0].size
     # QUANTIZATION_DIM = 64
 
@@ -67,7 +78,7 @@ switch_arch = [
             'ensemble_size' : ensemble_size,
             'cutoff' : cutoff,
             'add_x':add_x,
-            'n_switch' : 1,
+            'n_switch' : n_switch,
             'inward_depth' : inward_depth,
             'inward_width' : inward_width,
             'switch_dim' : switch_dim,
@@ -81,9 +92,9 @@ infra_command = ffjord_core.command_dim
 
 solver_param ={
     'first_step_size' : 0.1,
-    'max_num_steps': 1000,
-    'atol':1e-2,
-    'rtol':1e-3,
+    # 'max_num_steps': 1000,
+    # 'atol':1e-2,
+    # 'rtol':1e-3,
 }
 FFJORD_dorpri_arch1 = {
     'state_time_derivative_fn': ffjord_core,
@@ -105,9 +116,9 @@ channeller_archs = [
             'distribution_shape': channeller_input_shape,
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
-            'channel_sample':2,
+            'channel_sample':3,
             'width':16,
-            'depth':3,
+            'depth':2,
             'keep':(...,-1),
             'final_activation':tf.keras.activations.tanh
         }
@@ -196,11 +207,19 @@ pictures_coord = np.concatenate([np.broadcast_to(picture_coord,(dataset_size,ima
 
 
 
-for i in range(3):
-    plt.matshow(tf.reshape(pictures_coord[i,:,-1],(xmax,ymax)))
+test_indices = np.array([1,3,5,7,2,0,13,15,17,22])
+# print(pictures_coord[test_indices].shape)
+# densities = ConvKernel.reconstruction(pictures_coord[test_indices],tf.zeros((test_indices.size,0)))
+# for i in range(10):
+#     plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
+#     plt.savefig(os.path.join(SAVE_FOLDER,'target_%03d_epoch_%03d.png' % (i,epoch)))
+#     plt.clf()
+# raise
+for i in range(10):
+    plt.matshow(tf.reshape(pictures_coord[test_indices][i,:,-1],(xmax,ymax)))
     plt.savefig(os.path.join(SAVE_FOLDER,'target_%s.png' % i))
     plt.clf()
-#
+
 output_signature = (
     tf.TensorSpec(shape=(batch_size,1),dtype=tf.float32,name='weights'),
     tf.TensorSpec(shape=(batch_size,QUANTIZATION_DIM,DISTRIBUTION_DIM+1),dtype=tf.float32,name='coordinates'),
@@ -226,12 +245,16 @@ for epoch in range(EPOCHS):
         transformed_distribution.train_step(batch)
         i+=1
         print("epoch %s, batch %s done in %s seconds        " % (epoch,i,time.time()-L))
-    densities = ConvKernel.reconstruction(pictures_coord[:3],tf.zeros((3,0)))
-    for i in range(3):
+    L = time.time()
+    densities = ConvKernel.reconstruction(pictures_coord[test_indices],tf.zeros((test_indices.size,0)))
+    for i in range(10):
         plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
         plt.savefig(os.path.join(SAVE_FOLDER,'target_%03d_epoch_%03d.png' % (i,epoch)))
         plt.clf()
-
+    with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
+        np.save(f,ConvKernel.channeller((pictures_coord,commands)))
+    transformed_distribution.save_weights(os.path.join(model_folder,'weights_%s' % epoch))
+    print('image generation:',time.time()-L)
     print("\n","epoch %s, batch %s done in %s seconds" % (epoch,i,time.time()-T))
-
+    # transformed_distribution.
 print("done in %s seconds" % (time.time()-T))
