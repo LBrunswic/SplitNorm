@@ -1,4 +1,6 @@
-import tensorflow as tf;
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
 import tensorflow_probability as tfp;
 import ConvolutionalKernel;
 import numpy as np
@@ -10,11 +12,16 @@ from PIL import Image
 import sys
 # tf.config.optimizer.set_experimental_options({'disable_meta_optimizer':True})
 
-#
-# GPU = 0
-# gpus = tf.config.list_physical_devices('GPU')
-# if gpus:
-#     tf.config.set_visible_devices(gpus[GPU],'GPU')
+try:
+    GPU = int(sys.argv[1])
+except:
+    GPU = -1
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    if GPU<0:
+        tf.config.set_visible_devices([],'GPU')
+    else:
+        tf.config.set_visible_devices(gpus[GPU],'GPU')
 
 tfd = tfp.distributions
 now = datetime.datetime.now()
@@ -22,8 +29,8 @@ date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 
 T = time.time()
-EPOCHS = 1000
-STEP_PER_EPOCH = 20
+EPOCHS = 1
+STEP_PER_EPOCH = 1
 DISTRIBUTION_DIM = 2
 COMMAND_DIM = 0
 SAVE_FOLDER = os.path.join('results',date_time_str)
@@ -31,7 +38,7 @@ os.makedirs(SAVE_FOLDER)
 model_folder = os.path.join(SAVE_FOLDER,'model')
 os.makedirs(model_folder)
 ARCH = 0
-LR = 1e-3
+LR = 1e-2
 cutoff = 0
 add_x = True
 TEST = False
@@ -117,8 +124,8 @@ channeller_archs = [
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
             'channel_sample':3,
-            'width':16,
-            'depth':2,
+            'width':32,
+            'depth':3,
             'keep':(...,-1),
             'final_activation':tf.keras.activations.tanh
         }
@@ -217,7 +224,8 @@ test_indices = np.array([1,3,5,7,2,0,13,15,17,22])
 # raise
 for i in range(10):
     plt.matshow(tf.reshape(pictures_coord[test_indices][i,:,-1],(xmax,ymax)))
-    plt.savefig(os.path.join(SAVE_FOLDER,'target_%s.png' % i))
+    os.makedirs(os.path.join(SAVE_FOLDER,'example_%s' %i))
+    plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i, 'target.png'))
     plt.clf()
 
 output_signature = (
@@ -249,7 +257,7 @@ for epoch in range(EPOCHS):
     densities = ConvKernel.reconstruction(pictures_coord[test_indices],tf.zeros((test_indices.size,0)))
     for i in range(10):
         plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
-        plt.savefig(os.path.join(SAVE_FOLDER,'target_%03d_epoch_%03d.png' % (i,epoch)))
+        plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i,'epoch_%03d.png' % (i,epoch)))
         plt.clf()
     with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
         np.save(f,ConvKernel.channeller((pictures_coord,commands)))
