@@ -127,7 +127,7 @@ channeller_archs = [
             'width':16,
             'depth':4,
             'keep':...,
-            'final_activation':tf.keras.activations.tanh
+            'final_activation':tf.keras.activations.softmax
         }
     ],
 ]

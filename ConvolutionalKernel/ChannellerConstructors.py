@@ -29,9 +29,10 @@ def channeller_sequential(
         pre2 = lambda x:x
     raw_outputs = core_model(tf.keras.layers.Concatenate()([pre1(distribution_input[keep]),pre2(command_input)]))
     channel_batch, weights = tf.split(tf.keras.layers.Reshape((channel_sample,channel_dim+1))(raw_outputs),[channel_dim,1],axis=-1)
-    outputs = tf.keras.layers.Concatenate(axis=-1)([channel_batch,tf.keras.layers.Activation('softmax')(weights)])
-    if final_activation is not None:
-        outputs = final_activation(outputs)
+    if final_activation is None:
+        final_activation = lambda x:x
+    outputs = tf.keras.layers.Concatenate(axis=-1)([final_activation(channel_batch),tf.keras.layers.Activation('softmax')(weights)])
+
     return tf.keras.Model(inputs=inputs, outputs=outputs,name="channeller")
 
 def channeller_sequential_finite(finite_set=None, distribution_dim=None,channel_dim=None,command_dim=None,width=8,depth=3,kernelKWarg=None):
