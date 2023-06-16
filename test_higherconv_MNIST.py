@@ -29,8 +29,8 @@ date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 
 T = time.time()
-EPOCHS = 1
-STEP_PER_EPOCH = 1
+EPOCHS = 100
+STEP_PER_EPOCH = 20
 DISTRIBUTION_DIM = 2
 COMMAND_DIM = 0
 SAVE_FOLDER = os.path.join('results',date_time_str)
@@ -56,7 +56,7 @@ if TEST:
     QUANTIZATION_DIM = 8
 else:
     inward_depth = 4
-    inward_width = 64
+    inward_width = 16
     switch_dim = inward_width
     n_switch = 1
     ensemble_size = 5
@@ -123,10 +123,10 @@ channeller_archs = [
             'distribution_shape': channeller_input_shape,
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
-            'channel_sample':3,
-            'width':32,
-            'depth':3,
-            'keep':(...,-1),
+            'channel_sample':2,
+            'width':16,
+            'depth':4,
+            'keep':...,
             'final_activation':tf.keras.activations.tanh
         }
     ],
@@ -195,9 +195,9 @@ def gen_sample_generator(pictures_coord,commands, batch_size, quant_dim, delta_x
         coord = tf.concat([chosen[:,:,:DISTRIBUTION_DIM]+noise,chosen[:,:,field_coord:]],axis=-1)
         command = tf.gather(commands,batch_indices)
         res = (weights,coord,command)
-        print(weights.shape)
-        print(coord.shape)
-        print(command.shape)
+        # print(weights.shape)
+        # print(coord.shape)
+        # print(command.shape)
         yield res
 
 

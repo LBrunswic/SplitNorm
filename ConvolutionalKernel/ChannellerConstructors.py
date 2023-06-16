@@ -22,10 +22,12 @@ def channeller_sequential(
     inputs = (distribution_input,command_input)
     core_model = _aux_sequential_dense_gen((channel_dim+1)*channel_sample,width,depth,kernelKWarg=kernelKWarg)
     if flatten:
-        pre = tf.keras.layers.Flatten()
+        pre1 = tf.keras.layers.Flatten()
+        pre2 = tf.keras.layers.Flatten()
     else:
-        pre = lambda x:x
-    raw_outputs = core_model(tf.keras.layers.Concatenate()([pre(distribution_input[keep]),pre(command_input)]))
+        pre1 = lambda x:x
+        pre2 = lambda x:x
+    raw_outputs = core_model(tf.keras.layers.Concatenate()([pre1(distribution_input[keep]),pre2(command_input)]))
     channel_batch, weights = tf.split(tf.keras.layers.Reshape((channel_sample,channel_dim+1))(raw_outputs),[channel_dim,1],axis=-1)
     outputs = tf.keras.layers.Concatenate(axis=-1)([channel_batch,tf.keras.layers.Activation('softmax')(weights)])
     if final_activation is not None:
