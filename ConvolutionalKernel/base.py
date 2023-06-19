@@ -30,6 +30,7 @@ class CommandedTransformedDistribution(tf.keras.Model):
     def sample(self,command_batch):
         return self._sample(command_batch)
 
+    # @tf.function
     def train_step(self, weighted_sample_command_batch):
         # weight_batch, sample_batch, command_batch = tf.split(
         #     weighted_sample_command_batch,[1,self.distribution_dim,-1],

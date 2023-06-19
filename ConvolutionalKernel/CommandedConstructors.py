@@ -65,3 +65,24 @@ def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, add_x=True
         ]) #(batch_size, data_dim)
     ode_fn = tf.keras.Model(inputs=inputs, outputs=final_activation(level_out),name='seq_flow')
     return CMLP.CommandedMLP_ODE(ode_fn,command_dim,name='ODE_MLP')
+
+
+def commanded_concat_sequential_dense_with_encoding(dim=2, add_x=True, cutoff = 8,command_bypass=True,time_bypass=True, command_dim=1, depth=1,width=8,kernelKWarg={},final_activation=lambda x:x):
+    input_x = tf.keras.Input(shape=(dim+1,))
+    input_command = tf.keras.Input(shape=(command_dim,))
+    inputs = (input_x,input_command)
+
+    encoding = torus_positional_encoding(dim=dim,cutoff=cutoff)
+    x,t = tf.split(input_x,[dim,1],axis=-1)
+    if add_x:
+        input_encoded_x =  tf.keras.layers.Concatenate()([x,encoding(x),input_command,t])
+    else:
+        input_encoded_x =  tf.keras.layers.Concatenate()([encoding(x),input_command,t])
+    level_out = input_encoded_x
+    for level in range(depth-1):
+        level_out = tf.keras.layers.Dense(width,**kernelKWarg)(level_out)
+        level_out = tf.keras.layers.Concatenate()([
+            level_out]+[input_command]*command_bypass+[t]*time_bypass)
+    level_out = tf.keras.layers.Dense(dim,**kernelKWarg)(level_out)
+    ode_fn = tf.keras.Model(inputs=inputs, outputs=final_activation(level_out),name='seq_flow')
+    return CMLP.CommandedMLP_ODE(ode_fn,command_dim,name='ODE_MLP')
