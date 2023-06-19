@@ -229,6 +229,8 @@ class HigherConvKernel(tf.keras.Model):
         # print(self)
         # print(batch_quantized_dist.shape)
         # print(command_batch.shape)
+        print(self.commander.output_shape)
+        infra_command_dim = self.commander.output_shape[1]
         command_dim = command_batch.shape[-1]
         reshape_command = tf.keras.layers.Reshape((1,-1))
         batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
@@ -239,9 +241,9 @@ class HigherConvKernel(tf.keras.Model):
             batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
             #(data_batch_size*quant_dim,dim+1)
 
-            infra_command_dim = channel_batch.shape[1]
             # x = batch_quantized_dist[:,:,:1]*0 + reshape_command(self.commander((channel_batch,command_batch)))
             x = tf.keras.layers.RepeatVector(self.quantization_dim)(self.commander((channel_batch,command_batch)))
+            print(x.shape)
             assert(x.shape==(batch_size,quantization_dim,infra_command_dim))
             #    (batch_size,quant_dim,1)  +  (batch_size,1,command_dim) = (data_batch_size,quant_dim,command_dim)
             # TODO 1  : replace by a dynamic shape broadcast_to

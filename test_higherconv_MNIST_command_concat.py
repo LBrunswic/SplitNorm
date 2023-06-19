@@ -59,11 +59,15 @@ else:
     flow_width = 64
     command_bypass = True
     time_bypass = True
+    infra_command = 16
 
     channel_dim = 5
     channel_width = 32
     channel_depth = 4
     channel_sample = 2
+
+    commander_depth = 1
+    commander_width = 32
 
     # inward_depth = 4
     # inward_width = 32
@@ -96,7 +100,7 @@ switch_arch = [
             'width' : flow_width,
             'command_bypass':command_bypass,
             'time_bypass':time_bypass,
-            'command_dim':channel_dim,
+            'command_dim':infra_command,
             'kernelKWarg' : {'activation': tf.tanh},
             # 'kernelKWarg' : {'activation':  tf.keras.layers.LeakyReLU()},
             # 'final_activation': lambda x: 0.3*tf.tanh(x),
@@ -105,7 +109,7 @@ switch_arch = [
 ]
 
 ffjord_core = ConvolutionalKernel.utils.build(switch_arch[ARCH])
-infra_command = ffjord_core.command_dim
+# infra_command = ffjord_core.command_dim
 solver_param ={
     'first_step_size' : 0.1,
     # 'max_num_steps': 1000,
@@ -130,7 +134,7 @@ channeller_archs = [
         ConvolutionalKernel.ChannellerConstructors.channeller_sequential,
         {
             'distribution_shape': channeller_input_shape,
-            'channel_dim': infra_command,
+            'channel_dim': channel_dim,
             'command_dim': COMMAND_DIM,
             'channel_sample':channel_sample,
             'width':channel_width,
@@ -153,12 +157,25 @@ channeller_archs = [
     ],
 ]
 
+# commander_arch1 = {
+#     'channel_dim' : infra_command,
+#     'command_dim' : COMMAND_DIM,
+#     'output_dim' : infra_command,
+# }
+# commander = ConvolutionalKernel.CommanderConstructors.commander_passthrough(**commander_arch1)
+
 commander_arch1 = {
-    'channel_dim' : infra_command,
+    'channel_dim' : channel_dim,
     'command_dim' : COMMAND_DIM,
     'output_dim' : infra_command,
+     'depth': commander_depth,
+     'width': commander_width,
+     # 'kernelKWarg' : {'activation': tf.tanh},
+
 }
-commander = ConvolutionalKernel.CommanderConstructors.commander_passthrough(**commander_arch1)
+commander = ConvolutionalKernel.CommanderConstructors.commander_sequential(**commander_arch1)
+
+
 conv_kernel_arch = {
     'kernel_ensemble':kernel_ensemble,
     'commander': commander,

@@ -3,7 +3,7 @@ from ConvolutionalKernel.utils import _aux_sequential_dense_gen
 
 def commander_sequential(channel_dim=None, command_dim=None, output_dim=None, depth=1, width=8, kernel_kwargs = {}):
     """Commander model constructor. Concatenate command and channel and pass to a Sequential model"""
-    layers = [tf.keras.layers.Input(input_shape=(channel_dim+command_dim,))]
+    layers = [tf.keras.layers.Input(shape=(channel_dim+command_dim,))]
     layers += [
         tf.keras.layers.Dense(width,**kernel_kwargs)
         for i in range(depth-1)
