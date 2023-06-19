@@ -5,6 +5,18 @@ import tensorflow as tf;
 import ConvolutionalKernel;
 import numpy as np
 import sys
+try:
+    GPU = int(sys.argv[4])
+except:
+    GPU = -1
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    if GPU<0:
+        tf.config.set_visible_devices([],'GPU')
+    else:
+        tf.config.set_visible_devices(gpus[GPU],'GPU')
+
+
 LR = 5*1e-3
 DEPTH = int(sys.argv[1])
 WIDTH = int(sys.argv[2])
@@ -14,6 +26,8 @@ y = y.astype('int16')
 y = np.eye(10)[y]
 t = np.eye(10)[t]
 model = tf.keras.Sequential([tf.keras.layers.Flatten(input_shape=(28,28))] + [
+    # tf.keras.layers.Dense(WIDTH, activation=tf.keras.layers.Activation('tanh'),kernel_initializer=tf.keras.initializers.HeNormal())
+    # tf.keras.layers.Dense(WIDTH, activation=tf.keras.layers.Activation('swish'))
     tf.keras.layers.Dense(WIDTH, activation=tf.keras.layers.LeakyReLU())
     for _ in range(DEPTH-1)
 ]+

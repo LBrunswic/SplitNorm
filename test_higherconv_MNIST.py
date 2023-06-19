@@ -29,8 +29,8 @@ date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
 
 
 T = time.time()
-EPOCHS = 100
-STEP_PER_EPOCH = 20
+EPOCHS = 1000
+STEP_PER_EPOCH = 30
 DISTRIBUTION_DIM = 2
 COMMAND_DIM = 0
 SAVE_FOLDER = os.path.join('results',date_time_str)
@@ -55,12 +55,15 @@ if TEST:
     # QUANTIZATION_DIM = images[0].size
     QUANTIZATION_DIM = 8
 else:
-    inward_depth = 4
-    inward_width = 16
+    inward_depth = 3
+    inward_width = 64
     switch_dim = inward_width
     n_switch = 1
-    ensemble_size = 5
+    ensemble_size = 10
 
+    channel_width = 32
+    channel_depth = 4
+    channel_sample = 2
 
     # inward_depth = 4
     # inward_width = 32
@@ -70,9 +73,14 @@ else:
 
 
     batch_size = 32
+    images = np.load('MNIST.npy')
+    # a=0
+    # b=1
     # ensemble_size = 2
     # dataset_size = 28*28
-    images = np.load('MNIST.npy')
+
+    # images = np.load('MNIST.npy')[a:b+1]
+
     QUANTIZATION_DIM = images[0].size
     # QUANTIZATION_DIM = 64
 
@@ -89,7 +97,9 @@ switch_arch = [
             'inward_depth' : inward_depth,
             'inward_width' : inward_width,
             'switch_dim' : switch_dim,
-            'kernelKWarg' : {'activation': tf.keras.activations.tanh},
+            'kernelKWarg' : {'activation': tf.tanh},
+            # 'kernelKWarg' : {'activation':  tf.keras.layers.LeakyReLU()},
+            # 'final_activation': lambda x: 0.3*tf.tanh(x),
         }
     ],
 ]
@@ -123,11 +133,23 @@ channeller_archs = [
             'distribution_shape': channeller_input_shape,
             'channel_dim': infra_command,
             'command_dim': COMMAND_DIM,
-            'channel_sample':2,
-            'width':16,
-            'depth':4,
+            'channel_sample':channel_sample,
+            'width':channel_width,
+            'depth':channel_depth,
             'keep':...,
-            'final_activation':tf.keras.activations.softmax
+            # 'final_activation': lambda x: 2.*tf.tanh(x),
+            # 'final_activation': lambda x: tf.nn.softmax(x,axis=2),
+            # 'final_activation': tf.keras.layers.Activation('softmax'),
+            # 'final_activation':lambda x: tf.clip_by_value(x,-3,3),
+            'kernelKWarg' : {
+                # 'activation': tf.tanh,
+                'activation': tf.keras.layers.LeakyReLU(),
+                # 'activation': tf.tanh,
+                'kernel_initializer': tf.keras.initializers.GlorotNormal(seed=10212)
+            },
+            # 'kernelKWarg' : {'activation': tf.keras.layers.Activation('tanh')},
+            'final_rescale':1e-2,
+            'weights_moderation' : lambda x: tf.tanh(x*1e-2)*3
         }
     ],
 ]
@@ -181,7 +203,10 @@ def gen_sample_generator(pictures_coord,commands, batch_size, quant_dim, delta_x
 
     while True:
         T = time.time()
-        batch_indices = rng.choice(indices,size=batch_size)
+        if batch_size!=pictures_coord.shape[0]:
+            batch_indices = rng.choice(indices,size=batch_size)
+        else:
+            batch_indices = np.arange(pictures_coord.shape[0])
         picture_batch = pictures_coord[batch_indices]
         val = picture_batch[:,:, field_coord]
         val = val/np.sum(val,axis=1).reshape(-1,1)
@@ -214,7 +239,8 @@ pictures_coord = np.concatenate([np.broadcast_to(picture_coord,(dataset_size,ima
 
 
 
-test_indices = np.array([1,3,5,7,2,0,13,15,17,22])
+test_indices = np.arange(batch_size)
+# test_indices = np.array([1,3,5,7,2,0,13,15,17,22])
 # print(pictures_coord[test_indices].shape)
 # densities = ConvKernel.reconstruction(pictures_coord[test_indices],tf.zeros((test_indices.size,0)))
 # for i in range(10):
@@ -222,11 +248,12 @@ test_indices = np.array([1,3,5,7,2,0,13,15,17,22])
 #     plt.savefig(os.path.join(SAVE_FOLDER,'target_%03d_epoch_%03d.png' % (i,epoch)))
 #     plt.clf()
 # raise
-for i in range(10):
-    plt.matshow(tf.reshape(pictures_coord[test_indices][i,:,-1],(xmax,ymax)))
-    os.makedirs(os.path.join(SAVE_FOLDER,'example_%s' %i))
-    plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i, 'target.png'))
-    plt.clf()
+# for i in range(test_indices.size):
+#     plt.matshow(tf.reshape(pictures_coord[test_indices][i,:,-1],(xmax,ymax)))
+#     os.makedirs(os.path.join(SAVE_FOLDER,'example_%s' %i))
+#     plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i, 'target.png'))
+#     plt.close()
+#     plt.clf()
 
 output_signature = (
     tf.TensorSpec(shape=(batch_size,1),dtype=tf.float32,name='weights'),
@@ -246,19 +273,31 @@ transformed_distribution.compile(
 for epoch in range(EPOCHS):
     i=0
     T = time.time()
+    # transformed_distribution.fit(dataset,)
     for batch in dataset:
-        if i > STEP_PER_EPOCH:
+
+        # print(batch[1].shape)
+        if i == STEP_PER_EPOCH:
             break
         L = time.time()
         transformed_distribution.train_step(batch)
         i+=1
         print("epoch %s, batch %s done in %s seconds        " % (epoch,i,time.time()-L))
     L = time.time()
-    densities = ConvKernel.reconstruction(pictures_coord[test_indices],tf.zeros((test_indices.size,0)))
-    for i in range(10):
-        plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
-        plt.savefig(os.path.join(SAVE_FOLDER,'example_%s' %i,'epoch_%03d.png' % epoch))
-        plt.clf()
+    for batch in dataset:
+        densities = ConvKernel.reconstruction(batch[1],batch[2])
+        os.makedirs(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch))
+        for i in range(batch_size):
+            plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
+            plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d_a.png' % i))
+            plt.close()
+            # plt.clf()
+            # plt.savefig(os.path.join(SAVE_FOLDER,'%03d_epoch_%03d_a.png' % (i,epoch)))
+            plt.matshow(tf.reshape(batch[1][i,:,-1],(xmax,ymax)))
+            plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d_b.png' % i))
+            # plt.clf()
+            plt.close()
+        break
     with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
         np.save(f,ConvKernel.channeller((pictures_coord,commands)))
     transformed_distribution.save_weights(os.path.join(model_folder,'weights_%s' % epoch))

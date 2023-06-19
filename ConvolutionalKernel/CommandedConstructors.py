@@ -37,7 +37,7 @@ def torus_positional_encoding(dim=2,cutoff=8,wx=4):
     return tf.keras.Model(inputs=input_x, outputs=outputs,name='positional_encoding_k%s' % cutoff)
 
 
-def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, add_x=True, n_switch=4,cutoff = 8, ensemble_size=2,inward_depth=1,switch_dim=16,inward_width=8,kernelKWarg={}):
+def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, add_x=True, n_switch=4,cutoff = 8, ensemble_size=2,inward_depth=1,switch_dim=16,inward_width=8,kernelKWarg={},final_activation=lambda x:x):
     command_dim = n_switch * ensemble_size
     input_x = tf.keras.Input(shape=(dim+1,))
     input_command = tf.keras.Input(shape=(command_dim,))
@@ -63,5 +63,5 @@ def commanded_switched_ensemble_sequential_dense_with_encoding(dim=2, add_x=True
             flow_level_out,
             switch_commands[level]
         ]) #(batch_size, data_dim)
-    ode_fn = tf.keras.Model(inputs=inputs, outputs=level_out,name='seq_flow')
+    ode_fn = tf.keras.Model(inputs=inputs, outputs=final_activation(level_out),name='seq_flow')
     return CMLP.CommandedMLP_ODE(ode_fn,command_dim,name='ODE_MLP')
