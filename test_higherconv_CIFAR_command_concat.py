@@ -40,7 +40,6 @@ os.makedirs(model_folder)
 ARCH = 0
 LR = 1e-2
 cutoff = 0
-DATASET = 'MNIST'
 add_x = True
 TEST = False
 # p = 0.5
@@ -77,14 +76,11 @@ else:
     # n_switch = 1
     # ensemble_size = 2
 
-
     batch_size = 32
-    if DATASET == 'MNIST':
-        images = np.load('MNIST.npy').reshape(-1,28,28)
-    elif DATASET == 'CIFAR10':
-        images = np.load('cifar_data.npy')
-        images = images/np.sum(images,axis=1).reshape(-1,1)
-        images = np.sum(images.reshape(-1,3,32,32),axis=1)
+    images = np.load('cifar_data.npy')
+    # print(images.shape)
+    normalization = np.sum(images,axis=-1).reshape(-1,1)
+    images = (images/normalization).astype('float32').reshape(-1,3*32,32)
 
     # a=0
     # b=1
@@ -178,7 +174,7 @@ commander = ConvolutionalKernel.CommanderConstructors.commander_passthrough(**co
 #     'output_dim' : infra_command,
 #      'depth': commander_depth,
 #      'width': commander_width,
-#      'kernelKWarg' : {'activation': tf.tanh},
+#      # 'kernelKWarg' : {'activation': tf.tanh},
 #
 # }
 # commander = ConvolutionalKernel.CommanderConstructors.commander_sequential(**commander_arch1)
@@ -260,7 +256,7 @@ limits = [(-2,2,delta_y),(-2,2,delta_x)]
 picture_coord = np.mgrid[[slice(a, b, e) for a, b, e in limits]].transpose().astype('float32').reshape(1,image.size,2)
 images_flat = images.reshape(dataset_size,image.size,1)
 pictures_coord = np.concatenate([np.broadcast_to(picture_coord,(dataset_size,image.size,2)),images_flat],axis=-1)
-
+print(images_flat.shape)
 
 
 test_indices = np.arange(batch_size)
@@ -294,6 +290,10 @@ transformed_distribution.compile(
     optimizer=tf.keras.optimizers.Adam(LR)
 )
 
+
+def normalize(image):
+    return tf.reshape(image,(3,32,32)).numpy().transpose()/np.max(image)
+
 for epoch in range(EPOCHS):
     i=0
     T = time.time()
@@ -312,12 +312,14 @@ for epoch in range(EPOCHS):
         densities = ConvKernel.reconstruction(batch[1],batch[2])
         os.makedirs(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch))
         for i in range(batch_size):
-            plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
+            # plt.matshow(tf.reshape(densities[i,:],(xmax,ymax)))
+            plt.imshow(normalize(densities[i,:]))
             plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d_a.png' % i))
             plt.close()
             # plt.clf()
             # plt.savefig(os.path.join(SAVE_FOLDER,'%03d_epoch_%03d_a.png' % (i,epoch)))
-            plt.matshow(tf.reshape(batch[1][i,:,-1],(xmax,ymax)))
+            plt.imshow(normalize(batch[1][i,:,-1]))
+            # plt.matshow()
             plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d_b.png' % i))
             # plt.clf()
             plt.close()
