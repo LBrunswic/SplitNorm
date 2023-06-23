@@ -10,12 +10,16 @@ from PIL import Image
 import sys
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-#
-#
-# GPU = 0
-# gpus = tf.config.list_physical_devices('GPU')
-# if gpus:
-#     tf.config.set_visible_devices(gpus[GPU],'GPU')
+try:
+    GPU = int(sys.argv[1])
+except:
+    GPU = -1
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    if GPU<0:
+        tf.config.set_visible_devices([],'GPU')
+    else:
+        tf.config.set_visible_devices(gpus[GPU],'GPU')
 
 tfd = tfp.distributions
 now = datetime.datetime.now()

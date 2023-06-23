@@ -10,12 +10,16 @@ from PIL import Image
 import sys
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-#
-#
-# GPU = 0
-# gpus = tf.config.list_physical_devices('GPU')
-# if gpus:
-#     tf.config.set_visible_devices(gpus[GPU],'GPU')
+try:
+    GPU = int(sys.argv[1])
+except:
+    GPU = -1
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    if GPU<0:
+        tf.config.set_visible_devices([],'GPU')
+    else:
+        tf.config.set_visible_devices(gpus[GPU],'GPU')
 
 tfd = tfp.distributions
 now = datetime.datetime.now()
@@ -41,8 +45,8 @@ IMAGE = 'nasa_galaxy_xsmall.png'
 
 if TEST:
     inward_depth = 4
-    inward_width = 16
-    switch_dim = 16
+    inward_width = 64
+    switch_dim = 64
 
     i = 12
     image = np.load('cifar_data.npy')[i].reshape(3,32,32).transpose().reshape(32,32*3).astype('float32')/255
@@ -166,7 +170,7 @@ channeller_archs = [
             'channel_dim': channel_dim,
             'command_dim': COMMAND_DIM,
             'channel_sample':3,
-            'width':16,
+            'width':64,
             'depth':4,
         }
     ],
