@@ -15,11 +15,13 @@ class CommandedTransformedDistribution(tf.keras.Model):
         self._sample = _sample
         self.distribution_dim = distribution_dim
         self.command_dim = command_dim
-        self.reshape = tf.keras.layers.Reshape((-1,))
+        self.reshape_weights = tf.keras.layers.Reshape((-1,))
+        self.reshape_scores = tf.keras.layers.Reshape((-1,))
 
     def call(self,x):
         sample_batch,command_batch = tf.split(x,[self.distribution_dim,self.command_dim],axis=-1)
         return self.score(sample_batch,command_batch)
+
     @tf.function
     def score(self,sample_batch,command_batch):
         return self._score(sample_batch,command_batch)
@@ -37,10 +39,11 @@ class CommandedTransformedDistribution(tf.keras.Model):
         #     axis=-1
         # )
         weight_batch, sample_batch, command_batch = weighted_sample_command_batch
-        weight_batch=self.reshape(weight_batch)
+        print('received_shapes',weight_batch.shape,sample_batch.shape,command_batch.shape)
+        weight_batch=self.reshape_weights(weight_batch)
         trainable_var = self.trainable_variables
         with tf.GradientTape() as tape:
-            scores = self.reshape(self.score(sample_batch,command_batch))
+            scores = self.reshape_scores(self.score(sample_batch,command_batch))
             scores = weight_batch*scores
             loss = tf.reduce_mean(scores)
         grad = tape.gradient(loss, trainable_var)
@@ -62,6 +65,24 @@ class CommandedTransformedDistribution(tf.keras.Model):
                 command
             ).numpy().reshape(x,y)
         )
+        plt.savefig(name)
+
+    def display_picture(self,command=None,channel=3,name='plop',limits=((-2,2,0.05),(-2,2,0.05))):
+        if self.distribution_dim>2:
+            raise NotImplementedError
+
+        sample = np.mgrid[[slice(a,b,e) for a,b,e in limits]].transpose()
+        x,y,_ = sample.shape
+        sample = sample.reshape(-1,self.distribution_dim)
+        if command is None:
+            command = tf.ones((len(sample),self.command_dim))
+        densities = self.prob(
+            sample,
+            command
+        ).numpy().reshape(x,y//channel,channel)
+        final = densities/np.max(densities)
+        plt.imshow(final)
+
         plt.savefig(name)
 
     def density(self,command=None,name='plop',limits=((-2,2,0.05),(-2,2,0.05))):
@@ -144,26 +165,6 @@ class ConvKernel(tf.keras.Model):
         print(self.channel_sample)
     def build_dist(self,base_distribution):
         transformed_distribution = self.kernel_ensemble.build_dist(base_distribution)
-
-        sample_batch = tf.keras.Input(shape=(self.distribution_dim,),name='dist_sample')
-        command_batch = tf.keras.Input(shape=(self.command_dim,),name='command')
-        channel_batch = tf.keras.Input(shape=(self.channel_dim,),name='channel')
-        inputs = (sample_batch,channel_batch,command_batch)
-        for x in (inputs):
-            print(x.name,x.shape)
-        outputs = (transformed_distribution.score(sample_batch,  self.commander((channel_batch, command_batch))))
-        # outputs = tf.keras.layers.Reshape((1,))(outputs)
-        # score_core = tf.keras.Model(inputs=inputs,outputs=ouputs)
-        #
-        # sample_batch = tf.keras.Input(shape=(self.distribution_dim,))
-        # command_batch = tf.keras.Input(shape=(self.command_dim,))
-        # channel_batchs = tf.keras.Input(shape=(self.channel_dim,))
-        # inputs = (sample_batch,channel_batch,command_batch)
-        # repeated_sample_batch = tf.keras.layers.RepeatVector(self.channel_sample)(sample_batch)
-        # repeated_command_batch = tf.keras.layers.RepeatVector(self.channel_sample)(command_batch)
-        # outputs = tf.keras.layers.TimeDistributed(score_core)((repeated_sample_batch,channel_batchs,repeated_command_batch))
-        # channelled_score = tf.keras.Model(inputs=inputs,outputs=outputs)
-        # print(channelled_score)
         dot = tf.keras.layers.Dot(axes=(0,1))
         # @tf.function
         def _score(sample_batch,command_batch):
@@ -179,7 +180,7 @@ class ConvKernel(tf.keras.Model):
             scores = self.concat(A)
             # A = channelled_score((sample_batch,weighted_channel_batch[:,:,-1],command_batch))
             weight_batch = weighted_channel_batch[:, :, -1]
-            return sel.dot([scores, weight_batch])
+            return self.dot([scores, weight_batch])
 
         def _prob(sample_batch,command_batch,*args,**kwargs):
             weighted_channel_batch = self.channeller((sample_batch, command_batch))
