@@ -48,7 +48,7 @@ TEST = False
 if TEST:
     inward_depth = 1
     inward_width = 4
-    switch_dim = 4
+    switch_dim = 1
     batch_size = 32
     ensemble_size = 1
     # dataset_size = 28*28
@@ -57,16 +57,16 @@ if TEST:
     # QUANTIZATION_DIM = images[0].size
     QUANTIZATION_DIM = 8
 else:
-    flow_depth = 4
+    flow_depth = 3
     flow_width = 64
     command_bypass = True
     time_bypass = True
-    infra_command = 8
+    infra_command = 1
 
     channel_dim = infra_command
     channel_width = 64
     channel_depth = 4
-    channel_sample = 1
+    channel_sample = 8
 
     commander_depth = 1
     commander_width = 32
@@ -96,8 +96,7 @@ else:
     QUANTIZATION_DIM = images[0].size
     # QUANTIZATION_DIM = 64
 
-alpha = 1.
-delta = 1.
+
 switch_arch = [
     [
         ConvolutionalKernel.CommandedConstructors.commanded_concat_sequential_dense_with_encoding,
@@ -110,7 +109,7 @@ switch_arch = [
             'command_bypass':command_bypass,
             'time_bypass':time_bypass,
             'command_dim':infra_command,
-            'kernelKWarg' : {'activation': lambda x: alpha*tf.tanh(delta*x)},
+            'kernelKWarg' : {'activation': lambda x: 2*tf.tanh(x)},
             # 'kernelKWarg' : {'activation':  tf.keras.layers.LeakyReLU()},
             # 'final_activation': lambda x: 0.3*tf.tanh(x),
         }
@@ -161,7 +160,7 @@ channeller_archs = [
             },
             # 'kernelKWarg' : {'activation': tf.keras.layers.Activation('tanh')},
             'final_rescale':1e-2,
-            'weights_moderation' : lambda x: tf.tanh(x*1e-2)*3
+            'weights_moderation' : lambda x: tf.tanh(x*1e-3)*3
         }
     ],
 ]

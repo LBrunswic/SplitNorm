@@ -1,15 +1,18 @@
 # SplitNorm
 
+#HP TO TEST
+## MNIST numbers
+- [ ] variations on spatial encoding [0-16]
+- [ ] variations on channel dimension [1-16]
 
 # TODO
-
 ## Pytorch Implementation
 - [ ] Migrate code to Pytorch
 
 ## TF Implementation
 - [x] Have single MNIST instance working
 - [x] Clean ConvKernel2 (Leo)
-- [ ] Solve the fit training issue
+- [x] Solve the fit training issue
 ##  Benchmarking
 - [ ] Choice of datasets for showcase (2 scales of images datasets, Finance dataset, manifold learning)
 - [ ] Choice of metrics for each (number of parameters, likelyhood, L2 norm, benefit)
@@ -62,14 +65,7 @@ The goal is to have building blocks for flows
 - [ ] Bibliography on solution of poisson problem
 ###  FFJORD
 - [ ] Add Benamou-Brenier regularization
-- Better ODE solver
-  - [x] Quick review of Elementary numerical methods
-  - [ ] Deeper review of numerical methods
-  - [x] Analysis of TF code + how to modify it
-  - [x] some tests of  simple variations on TF ODE solver code
-  - [ ] Implementation of other methods
-  - [ ] Some theoretical analysis of the issue at hand, SOTA and potential improvements
-- [ ] Solve the Jacobian computation issue when fed virtual input
+
 
 # Secondary normalization and generation
 - [ ] implement a class designed for training of iterated normalization

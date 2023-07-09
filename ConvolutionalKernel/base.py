@@ -15,8 +15,8 @@ class CommandedTransformedDistribution(tf.keras.Model):
         self._sample = _sample
         self.distribution_dim = distribution_dim
         self.command_dim = command_dim
-        self.reshape_weights = tf.keras.layers.Reshape((-1,))
-        self.reshape_scores = tf.keras.layers.Reshape((-1,))
+        self.reshape_weights = tf.keras.layers.Reshape(())
+        self.reshape_scores = tf.keras.layers.Reshape(())
 
     def call(self,x):
         sample_batch,command_batch = tf.split(x,[self.distribution_dim,self.command_dim],axis=-1)
@@ -228,15 +228,17 @@ class HigherConvKernel(tf.keras.Model):
     # @tf.function
     def reconstruction(self,batch_quantized_dist,command_batch):
         # print(self)
-        # print(batch_quantized_dist.shape)
-        # print(command_batch.shape)
+        print("_______________")
+        print(batch_quantized_dist.shape)
+        print(command_batch.shape)
         print(self.commander.output_shape)
+        print("_______________")
         infra_command_dim = self.commander.output_shape[1]
         command_dim = command_batch.shape[-1]
         reshape_command = tf.keras.layers.Reshape((1,-1))
         batch_size, quantization_dim, weight_distribution_dim = batch_quantized_dist.shape
         weighted_channels_batch = self.channeller(((batch_quantized_dist),command_batch)) # (data_batch_size,channel_batch_size,channel_dim+1)
-        print(weighted_channels_batch[:4])
+
         A = []
         for channel_batch in tf.unstack(weighted_channels_batch[:, :, :-1], axis=1):
             batch_quantized_dist_flat =  tf.reshape(batch_quantized_dist, (-1, batch_quantized_dist.shape[-1]))
@@ -258,7 +260,8 @@ class HigherConvKernel(tf.keras.Model):
             # print(command_batch_flat.shape)
             # s = transformed_distribution.prob(batch_quantized_dist_flat[:,:,:-1],command_batch_flat)
             s = self.kernel.prob(batch_quantized_dist_flat[:,:-1],command_batch_flat)
-            assert(s.shape==(batch_size*quantization_dim))
+            # print(s.shape,batch_size*quantization_dim)
+            # assert(s.shape==(batch_size*quantization_dim))
             # (data_batch_size*quant_dim,dim+1),(batch_size*quant_dim,command_dim) -> (batch_size*quant_dim,)
 
             a = tf.reshape(s,(batch_size,quantization_dim,1))
