@@ -60,7 +60,19 @@ def train(
     T = time.time()
     lvl1_command = channel2_dim
     channel1_sample = channel1_dim
-    images = np.load('MNIST.npy').reshape(-1,28,28)
+
+    DATASETS = {
+        'MNIST' : {
+            'file' : 'MNIST.npy',
+            'shape' : (-1,28,28)
+        },
+        'FASHION' : {
+            'file' : 'fashion.npy',
+            'shape' : (-1,28,28)
+        },
+
+    }
+    images = np.load(DATASETS[DATASET]['file']).reshape(DATASETS[DATASET]['shape'])
     SAVE_FOLDER = os.path.join('results',date_time_str)
     os.makedirs(SAVE_FOLDER)
     model_folder = os.path.join(SAVE_FOLDER,'model')
