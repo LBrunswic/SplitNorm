@@ -8,7 +8,8 @@ import sklearn.datasets as skd
 import time, os, datetime
 import imageio.v3 as iio
 from PIL import Image
-
+import warnings
+warnings.filterwarnings("ignore")
 tfd = tfp.distributions
 now = datetime.datetime.now()
 date_time_str = now.strftime("%m-%d_%Hh%Mm%Ss")
@@ -161,7 +162,7 @@ image = iio.imread(os.path.join('images', IMAGE))
 image.shape
 batch_size = 2**6
 dataset_size = image.shape[0]*image.shape[1]
-xmax, ymax,colors = image.shape
+xmax, ymax, colors = image.shape
 commands = tf.ones((*image.shape,transformed_distributions[0].command_dim))
 image = image.reshape(*image.shape,1)
 limits = [(-2,2,4/ymax),(-2,2,4/xmax)]
