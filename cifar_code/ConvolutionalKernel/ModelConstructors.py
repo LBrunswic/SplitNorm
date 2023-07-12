@@ -1,0 +1,3 @@
+import tensorflow as tf
+import ConvolutionalKernel.CommandedModels as CMLP
+from ConvolutionalKernel.utils import _aux_sequential_dense_gen
