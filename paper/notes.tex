@@ -1,0 +1,146 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsthm,amssymb}
+%\usepackage[all]{xypic}
+%opening
+\title{Split Normalization}
+\author{Leo Brunswic}
+\def\X{\mathcal{X}}
+\def\Z{\mathcal{Z}}
+\def\P{\mathcal{P}}
+\def\RR{\mathbb{R}}
+\def\EE{\mathbb{E}}
+\def\ChannelSpace{\mathcal{C}}
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\section{Normalization losses}
+
+Considering a convolutionnal kernel $F_C:(\X,\mu)\rightarrow (\Z,\nu)$ we identify can 6 different  normalization losses build from an Csiszar divergence $H_g$.
+\begin{enumerate}
+ \item $H_g(\mu F_C || \nu)$
+ \item $H_g(\nu||\mu F_C)$
+ \item $H_g(\mu \widehat F_C || \nu \otimes \mu C)$
+ \item $H_g( \nu \otimes \mu C || \mu \widehat F_C)$
+ \item $H_g( (\nu \otimes \mu C) \widehat F_C^{-1}|| \mu )$
+ \item $H_g( \mu || (\nu \otimes \mu) C \widehat F_C^{-1})$
+ \end{enumerate}
+
+ \subsection{Ensembles of Normalization flows : $F_c(x) = \delta_{f_c(x)}$}
+Since $\EE_{x\sim \mu} \delta_{f_c(x)}  = f_c\# \mu$, those cases are computed via a change of variable formula
+$$\forall f : \RR^d \rightarrow \RR^ d,\forall \mu\in \P(\RR^d), \quad  \mu = p_\mu  \lambda ~~\Rightarrow~~\frac{d f\#\mu}{d\lambda}(y) = p_{\mu} \circ f^{-1}(y) J_{f^{-1}}(y)   $$
+where $J_g(x) = |\det(D_x g)|$.
+The original normalization flow situation corresponds to $\mathcal C=\{c\}$ and the usual computation yields:
+$$ H_{KL}(f^{-1}\nu||\mu) = -\EE_{x\sim \mu} \log \left[ \frac{p_{\nu} \circ f(x) J_{f}(x)}{p_\mu(x)}\right] = \EE_{x\sim \mu}\left[ \log p_{\nu} \circ f(x) +  \log J_{f}(x) \right] + H(\lambda|| \mu).$$
+Since  $H(\mu||\lambda)$ is independent from the trainable parameters within $f$ it can be ignored in the computation of the loss. The convolutionnal cases are more complicated.
+
+
+ \subsubsection{$H_g(\mu F_C || \nu)$ and $H_g(\nu||\mu F_C)$}
+A key computation for those Cross entropy is to find good formulas for  $\frac{d \mu F_c}{d \nu}$.
+\begin{eqnarray}
+ \mu F_c &:=& \EE_{x\sim \mu}\EE_{c\sim  C(x)} F_c(x) \\
+ &=& \EE_{c\sim  \mu C}\EE_{x\sim X(c)} \delta_{f_c(x)} \\
+ &=& \EE_{c\sim  \mu C}f_c\# X(c) \\
+ &=& \EE_{c\sim  \mu C} \left[p_{X(c)} \circ f_c^{-1} J_{f_c^{-1}}\right] \lambda
+\end{eqnarray}
+
+Unfortunately this formula leads to difficult to evaluate losses:
+\begin{itemize}
+ \item the expectancy in $c$  is intractable for infinite $\ChannelSpace$,
+ \item for KL, we obtain a log of sum of exponential of channel log prob which is more prone to numerical errors
+ \item we cannot separate the self-entropy of the data distribution from the log prob terms
+ \item the cross entropy contains conditional terms $p_{X(c)}$ that are typically intractable.
+\end{itemize}
+They do not appear to yield useful tractable losses
+
+\subsubsection{$H_g(\mu \widehat F_C || \nu \otimes \mu C)$ and $H_g( \nu \otimes \mu C || \mu \widehat F_C)$}
+
+    Again, the core computation is $\frac{d \mu \widehat F_C}{d\nu\otimes \mu C}$.
+    \begin{eqnarray}
+        \mu \widehat F_C &:=& \EE_{x\sim \mu} \EE_{c\sim C(x)} F_c(x)\otimes\delta_c \\
+        &=& \EE_{c\sim \mu C} \left[\EE_{x\sim X(c)} F_c(x)\right] \otimes \delta_c \\
+        &=& \EE_{c\sim \mu C} \left[f_c\# X(c)\right] \otimes \delta_c \\
+    \end{eqnarray}
+    If $\mathcal C$ is finite this implies
+    $$ \frac{d \mu \widehat F_C}{d \nu\otimes \mu C}(y,c) = \frac{d f_c \# X(c)}{d \nu}$$
+    We conclude that
+    $$ H_{g}(\mu \widehat F_C || \nu\otimes \mu C) = \EE_{c\sim \mu C} H_{g}(f_c\# X(c) || \nu) $$
+    $$ H_{g}( \nu\otimes \mu C || \mu \widehat F_C ) = \EE_{c\sim \mu C} H_{g}(\nu||f_c\# X(c) )  $$
+By an approximation argument, the finiteness hypothesis on $\mathcal C$ is not necessary. Finally, we have:
+
+$$ H_{KL}( \nu\otimes \mu C || \mu \widehat F_C )  = \EE_{x\sim \mu} \EE_{c\sim C(x)} \left[ \log p_\nu \circ f_c(x) +\log J_{f_c}(x) \right] + \EE_{c\sim \mu C} H_{KL}(\mu||X(c)) + H_{KL}(\lambda||\mu)  .$$
+
+
+
+This formula suggests that using the expectancy of the log probability if the channeller $C$ is fixed. However, one needs to be careful if the channeller is trainable.
+We recover another density probblem if the channeller is such that the channel leaves do not have density with respect to $\mu$.
+
+\subsubsection{$H_g( (\nu \otimes \mu C) \widehat F_C^{-1}|| \mu )$}
+In this case
+\begin{eqnarray}
+ (\nu\otimes \mu C) \widehat F_C^{-1} &:=&  \EE_{y\sim \nu} \EE_{c\sim \mu C} F_c^{-1}(y) \\
+ &=&  \EE_{c\sim \mu C} \left[\nu F_c^{-1}\right] \\
+ &=& \EE_{c\sim \mu C} \left[f_c^{-1}\# \nu \right] \\
+ &=& \EE_{c\sim \mu C} \left[ p_{\nu}\circ f_c^{-1} J_{f_c} \right] \lambda \\
+ \frac{d(\nu\otimes \mu C) \widehat F_C^{-1}}{d \mu}(x) &=& \frac{\EE_{c\sim \mu C} \left[ p_{\nu}\circ f_c(x) J_{f_c}(x) \right]}{p_\mu(x)}
+\end{eqnarray}
+
+
+\subsection{Case $F_c(x) = \delta_{f_c \# x}$}
+In this case $\X = \mathcal P(\RR^n)$ and $\Z = P(\RR^n)$, points of $\X$ are thus distributions and for any bi-Lipchitz map $f_c$ we may define the kernel $F_c(x)$ as $ \delta_{f_c\#  x}$.
+Beware that now, the target distribution and latent distributions $\mu,\nu$ are elements of $\mathcal P \mathcal P\RR^n$.
+Since $f_c^{-1}\# (f_c \# x) = x$, we may define $F_c^{-1}(y) = f_c^{-1}\# y$ so that $F_c$ is invertible.
+Note that $F_c$ may also be defined as a kernel  $\mathcal P\RR^n \rightarrow \RR^n$ eg a map $\P\P\RR^n\rightarrow \P\RR^n$but this one is not invertible:
+\begin{eqnarray}
+\mu F_c &=& \EE_{x\sim \mu}F_c(x) \\
+&=& \EE_{x\sim \mu} f_c\# x \\
+&=& f_c\# \EE_{x\sim \mu}x.
+\end{eqnarray}
+Therefore the image of a distribution $\mu \in \mathcal P \mathcal P\RR^n $ is $f_c \# \EE_{x\sim \mu}x$ instead and one cannot distinguish two distributions $\mu_1,\mu_2$ having same expectancy: the map
+$F_c : \mathcal P \mathcal P\RR^n \rightarrow \mathcal P\RR^n $ is not injective thus certainly not bijective.
+
+
+\subsubsection{Case $H_g(\mu F_C || \nu)$}
+    \begin{eqnarray}
+        \mu F_c &:=& \EE_{x\sim \mu} \EE_{c\sim C(x)} F_c(x) \\
+        &=& \EE_{c\sim \mu C} \EE_{x\sim X(c)} \delta_{f_c\# x} \\
+        &=& \EE_{c\sim \mu C} X(c)F_c
+    \end{eqnarray}
+
+
+
+
+\subsubsection{$H_g( \nu \otimes \mu C || \mu \widehat F_C)$}
+
+    Again, the core computation is $\frac{d \mu \widehat F_C}{d\nu\otimes \mu C}$.
+    \begin{eqnarray}
+        \mu \widehat F_C &:=& \EE_{x\sim \mu} \EE_{c\sim C(x)} F_c(x)\otimes\delta_c \\
+        &=& \EE_{c\sim \mu C} \left[\EE_{x\sim X(c)} F_c(x)\right] \otimes \delta_c \\
+        &=& \EE_{c\sim \mu C} \left[X(c)F_c\right] \otimes \delta_c \\
+    \end{eqnarray}
+    If $\mathcal C$ is finite this implies
+    $$ \frac{d \mu \widehat F_C}{d \nu\otimes \mu C}(y,c) = \frac{d X(c)F_c}{d \nu}$$
+    We conclude that
+    $$ H_{g}(\mu \widehat F_C || \nu\otimes \mu C) = \EE_{c\sim \mu C} H_{g}(f_c\# X(c) || \nu) $$
+    $$ H_{g}( \nu\otimes \mu C || \mu \widehat F_C ) = \EE_{c\sim \mu C} H_{g}(\nu||f_c\# X(c) )  $$
+By an approximation argument, the finiteness hypothesis on $\mathcal C$ is not necessary. Finally, we have:
+
+$$ H_{KL}( \nu\otimes \mu C || \mu \widehat F_C )  = \EE_{x\sim \mu} \EE_{c\sim C(x)} \left[ \log p_\nu \circ f_c(x) +\log J_{f_c}(x) \right] + \EE_{c\sim \mu C} H_{KL}(\mu||X(c)) + H_{KL}(\lambda||\mu)  .$$
+
+\section{Regularition of Total Normalization losses}
+The main terms of the forward total normalization loss $H_{KL}( \nu\otimes \mu C || \mu \widehat F_C )$ are
+$\mathcal L_{tot}=\EE_{x\sim \mu} \EE_{c\sim C(x)} \left[ \log p_\nu \circ f_c(x) +\log J_{f_c}(x) \right]$ and  $\mathcal L _{C/\mu}:=\EE_{c\sim \mu C} H_{KL}(\mu||X(c)) $.
+Although $\mathcal L_{tot}$ can be used in a straightforward way to train a convolutionnal flow, one needs to control the $(C/\mu)$-entropy term.
+
+Assuming that the support $\Sigma$ of $\mu$ has non-zero codimension then, intuitively, one needs to ensure that the tangent space of each channel leaves $\X_c:=\mathrm{supp} X(c) $ contains the tangent space of $\Sigma$. This is more or less satisfied if $\mathcal C$ is finite although in which can $\X_c$ is typically an regular domain of $\X$.  However, in general the probability that a random subspace of given dimension contains a fixed non trivial subspace is zero. Therefore, one hope to control this $(C/\mu)$-entropy only with such considerations.
+
+
+
+
+
+\end{document}
