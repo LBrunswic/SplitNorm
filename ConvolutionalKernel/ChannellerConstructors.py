@@ -71,14 +71,17 @@ def channeller_sequential_finite(
 
 def channeller_trivial(
     distribution_dim=None,
+    distribution_shape=None,
     channel_dim=None,
     command_dim=None,
     name="channeller",
 ):
-    distribution_input = tf.keras.layers.Input(shape=(distribution_dim,))
+    if distribution_shape is None:
+        distribution_shape = (distribution_dim,)
+    distribution_input = tf.keras.layers.Input(shape=distribution_shape)
     command_input = tf.keras.layers.Input(shape=(command_dim,))
     inputs = (distribution_input,command_input)
-    outputs = tf.reshape(0*tf.reduce_sum(distribution_input,axis=1)+0*tf.reduce_sum(command_input,axis=1),(-1,1,1)) + tf.ones((1,1,channel_dim+1))
+    outputs = tf.broadcast_to(tf.ones((1,1,channel_dim+1)),tf.where([True,False,False],tf.shape(distribution_input),[0,1,channel_dim+1]))
     return tf.keras.Model(inputs=inputs, outputs=outputs,name=name)
 
 

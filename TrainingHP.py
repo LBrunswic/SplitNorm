@@ -64,10 +64,10 @@ HPset = [
     {
         'EPOCHS' :500,
         'STEP_PER_EPOCH' : 30,
-        'flow_depth' : 6,
-        'flow_width' : 64,
+        'flow_depth' : 3,
+        'flow_width' : 32,
         'DATASET' : 'CELEBa_GRAY_ONE',
-        'channel1_width' : 32,
+        'channel1_width' : 16,
         'channel1_depth' : 4,
         'channel1_dim' : 16,
         'channel2_width' : 1,
