@@ -63,16 +63,48 @@ def train(
 
     DATASETS = {
         'MNIST' : {
+            'extract' : None,
             'file' : 'MNIST.npy',
             'shape' : (-1,28,28)
         },
         'FASHION' : {
+            'extract' : None,
             'file' : 'fashion.npy',
             'shape' : (-1,28,28)
         },
+        'CIFAR' : {
+            'extract' : None,
+            'file' : 'cifar.npy',
+            'shape' : (-1,3*32,32)
+        },
+        'CIFAR_ONE' : {
+            'extract' : 0,
+            'file' : 'cifar.npy',
+            'shape' : (-1,3*32,32)
+        },
+        'CIFAR_GRAY' : {
+            'extract' : None,
+            'file' : 'cifar_gray.npy',
+            'shape' : (-1,32,32)
+        },
+        'CIFAR_GRAY_ONE' : {
+            'extract' : 0,
+            'file' : 'cifar_gray.npy',
+            'shape' : (-1,32,32)
+        },
+        'CELEBa_GRAY_ONE' : {
+            'extract' : 0,
+            'file' : os.path.join('celeba','extract_gray.npy'),
+            'shape' : (-1,218,178)
+        },
 
     }
+    # images = np.load(DATASETS[DATASET]['file']).reshape(DATASETS[DATASET]['shape'])[:,100:120,20:150]
     images = np.load(DATASETS[DATASET]['file']).reshape(DATASETS[DATASET]['shape'])
+    extract = DATASETS[DATASET]['extract']
+    if extract is not None:
+        images = images[extract:extract+1]
+
     SAVE_FOLDER = os.path.join('results',date_time_str)
     os.makedirs(SAVE_FOLDER)
     model_folder = os.path.join(SAVE_FOLDER,'model')
@@ -135,7 +167,8 @@ def train(
                 'command_dim': lvl1_command,
                 'width':32,
                 'depth':3,
-                'finite_set':ConvolutionalKernel.utils.switch_commands(channel1_dim,1)
+                'finite_set':ConvolutionalKernel.utils.switch_commands(channel1_dim,1),
+                'name':'lvl1_channeller',
             }
         ],
     ]
@@ -169,6 +202,15 @@ def train(
                 'name':'lvl2_channeller',
                 'final_rescale':1e-3,
                 'weights_moderation' : lambda x: tf.tanh(x*1e-2)*3
+            }
+        ],
+        [
+            ConvolutionalKernel.ChannellerConstructors.channeller_trivial,
+            {
+                'distribution_shape': channeller2_input_shape,
+                'channel_dim': channel2_dim,
+                'command_dim': 0,
+                'name':'lvl2_channeller',
             }
         ],
     ]
