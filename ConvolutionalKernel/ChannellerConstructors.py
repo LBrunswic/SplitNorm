@@ -162,3 +162,47 @@ def channeller_sequential_resnet(
     outputs = tf.keras.layers.Concatenate(axis=-1)([final_activation(final_rescale*channel_batch),tf.nn.softmax(weights_moderation(weights),axis=1)])
 
     return tf.keras.Model(inputs=inputs, outputs=outputs,name="channeller")
+
+
+
+class InceptionBase(tf.keras.layers.Layer):
+    def __init__(self, structure=None, pool_struc=None, kernel_options=None, strides=2,  name='InceptionLayer', **kwargs):
+        super(InceptionBase,self).__init__(name=name,**kwargs)
+        self.structure = structure
+        self.kernel_options = kernel_options
+        self.pool_struc = pool_struc
+        self.strides = strides
+
+
+    def build(self,input_shape):
+        inputs = tf.keras.layers.Input(input_shape[1:])
+        pool_line = tf.keras.layers.MaxPooling2D(
+            pool_size=self.pool_struc['pool_size'],
+            strides=1,
+            padding=self.pool_struc['padding']
+        )(inputs)
+        lines = [inputs] * len(self.structure[:-1]) + [pool_line]
+
+        for line in range(len(self.structure)):
+            for i,stage in enumerate(self.structure[line][:-1]):
+                lines[line] = tf.keras.layers.Conv2D(
+                    stage[0],
+                    kernel_size=stage[1],
+                    strides=1,
+                    **self.kernel_options
+                )(lines[line])
+            stage = self.structure[line][-1]
+            lines[line] = tf.keras.layers.Conv2D(
+                stage[0],
+                kernel_size=stage[1],
+                strides=self.strides,
+                **self.kernel_options
+            )(lines[line])
+
+        outputs = tf.keras.layers.Concatenate(axis=-1)(lines)
+        self.layer = tf.keras.models.Model(inputs=inputs,outputs=outputs)
+
+    def call(self,inputs, training=False):
+        return self.layer(inputs, training=training)
+
+
