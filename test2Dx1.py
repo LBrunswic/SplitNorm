@@ -12,7 +12,7 @@ from PIL import Image
 import sys
 tfd = tfp.distributions
 # tf.config.optimizer.set_experimental_options({'disable_meta_optimizer':True})
-tf.config.set_logical_device_configuration(tf.config.list_physical_devices('GPU')[0], [tf.config.LogicalDeviceConfiguration(memory_limit=8000)])
+# tf.config.set_logical_device_configuration(tf.config.list_physical_devices('GPU')[0], [tf.config.LogicalDeviceConfiguration(memory_limit=8000)])
 try:
     GPU = int(sys.argv[1])
 except:
