@@ -58,7 +58,7 @@ HPset = [
         'channel2_depth' : 2,
         'channel2_sample' : 1,
         'channel2_dim' : 16,
-        'batch_size' : 128,
+        'batch_size' : 64,
         'LR':1e-3,
     },
     # {
