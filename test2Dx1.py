@@ -332,11 +332,8 @@ def train(
             densities = ConvKernel.reconstruction(batch[1],batch[2])
             os.makedirs(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch))
             for i in range(batch_size):
-                plt.imshow(tf.reshape(ttt(densities[i,:]),(xmax,ymax)))
-                plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d_a.png' % i))
-                plt.close()
-                plt.matshow(tf.reshape(batch[1][i,:,-1],(xmax,ymax)))
-                plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d_b.png' % i))
+                plt.matshow(tf.concat([tf.reshape(ttt(densities[i, :]), (xmax, ymax)),tf.reshape(batch[1][i,:,-1],(xmax,ymax))],axis=1))
+                plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d.png' % i))
                 plt.close()
             break
         with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
