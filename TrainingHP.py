@@ -51,7 +51,7 @@ HPset = [
         'flow_depth' : 4,
         'flow_width' : 48,
         'DATASET' : 'MNIST',
-        'channel1_width' : 32,
+        'channel1_width' : 16,
         'channel1_depth' : 3,
         'channel1_dim' : 4,
         'channel2_width' : 1024,
