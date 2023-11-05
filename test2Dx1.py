@@ -10,6 +10,9 @@ import time, os, datetime
 import imageio.v3 as iio
 from PIL import Image
 import sys
+path = 'run.log'
+log = open(path, 'w')
+sys.stdout = log
 tfd = tfp.distributions
 # tf.config.optimizer.set_experimental_options({'disable_meta_optimizer':True})
 # tf.config.set_logical_device_configuration(tf.config.list_physical_devices('GPU')[0], [tf.config.LogicalDeviceConfiguration(memory_limit=8000)])
@@ -328,6 +331,7 @@ def train(
 
 
     for epoch in range(EPOCHS):
+        log.flush()
         i=0
         T = time.time()
         for batch in dataset:
