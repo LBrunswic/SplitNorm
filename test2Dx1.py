@@ -348,7 +348,7 @@ def train(
             os.makedirs(os.path.join(SAVE_FOLDER,'images','case_%s' % k), exist_ok=True)
             for i in range(batch_size):
                 plt.matshow(np.concatenate([tf.reshape(ttt(densities[i, :]), (xmax, ymax)), tf.reshape(batch[1][i,:,-1],(xmax,ymax))],axis=1))
-                plt.savefig(os.path.join(SAVE_FOLDER,'images','case_%s' % k, 'epoch_%03d.png' % epoch))
+                plt.savefig(os.path.join(SAVE_FOLDER,'images','case_%01d_%02d' % (k,i), 'epoch_%03d.png' % epoch))
                 plt.close()
 
         with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
