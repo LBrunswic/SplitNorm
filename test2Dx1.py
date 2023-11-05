@@ -317,6 +317,16 @@ def train(
 
     def ttt(image):
         return (image/np.max(image)*255).numpy().astype('uint8')
+
+    ref_batches = []
+    i = 0
+    for batch in dataset:
+        i+=1
+        if i>10:
+            break
+        ref_batches.append(batch)
+
+
     for epoch in range(EPOCHS):
         i=0
         T = time.time()
@@ -328,14 +338,15 @@ def train(
             i+=1
             print("epoch %s, batch %s done in %s seconds        " % (epoch,i,time.time()-L))
         L = time.time()
-        for batch in dataset:
+        for k,batch in enumerate(ref_batches):
             densities = ConvKernel.reconstruction(batch[1],batch[2])
-            os.makedirs(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch))
+            # os.makedirs(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch))
+            os.makedirs(os.path.join(SAVE_FOLDER,'images','case_%s' % k), exist_ok=True)
             for i in range(batch_size):
                 plt.matshow(np.concatenate([tf.reshape(ttt(densities[i, :]), (xmax, ymax)), tf.reshape(batch[1][i,:,-1],(xmax,ymax))],axis=1))
-                plt.savefig(os.path.join(SAVE_FOLDER,'epoch_%03d' % epoch,'%03d.png' % i))
+                plt.savefig(os.path.join(SAVE_FOLDER,'images','case_%s' % k, 'epoch_%03d.png' % epoch))
                 plt.close()
-            break
+
         with open(os.path.join(SAVE_FOLDER,'channel_dist_%s' % epoch),'wb') as f:
             np.save(f,ConvKernel.channeller((pictures_coord,commands)))
         transformed_distribution.save_weights(os.path.join(model_folder,'weights_%s' % epoch))
