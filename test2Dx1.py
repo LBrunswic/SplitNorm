@@ -126,7 +126,7 @@ def train(
                 'width' : flow_width,
                 'command_bypass':command1_bypass,
                 'time_bypass':time1_bypass,
-                'command_dim':channel1_dim+lvl1_command,
+                'command_dim':channel1_dim,#+lvl1_command,
                 'kernelKWarg' : {'activation': lambda x: alpha*tf.tanh(delta*x)},
             }
         ],
@@ -170,8 +170,8 @@ def train(
                 'distribution_dim': DISTRIBUTION_DIM,
                 'channel_dim': channel1_dim,
                 'command_dim': lvl1_command,
-                'width':32,
-                'depth':3,
+                'width':channel1_width,
+                'depth':channel1_depth,
                 'finite_set':ConvolutionalKernel.utils.switch_commands(channel1_dim,1),
                 'name':'lvl1_channeller',
             }
