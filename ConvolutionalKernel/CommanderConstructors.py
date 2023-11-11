@@ -32,3 +32,11 @@ def commander_passthrough(channel_dim=None,command_dim=None,output_dim=None,name
     inputs = (channel_input,command_input)
     outputs = tf.keras.layers.Concatenate()([channel_input,command_input])
     return tf.keras.Model(inputs=inputs,outputs=outputs,name=name)
+
+def commander_passthrough_channel(channel_dim=None,command_dim=None,output_dim=None,name='commander'):
+    """ Commander model constructor. Concatenate channel and command"""
+    channel_input = tf.keras.layers.Input(shape=(channel_dim,),name="%s_channel_in" % name)
+    command_input = tf.keras.layers.Input(shape=(command_dim,),name="%s_command_in" % name)
+    inputs = (channel_input,command_input)
+    outputs = channel_input
+    return tf.keras.Model(inputs=inputs,outputs=outputs,name=name)

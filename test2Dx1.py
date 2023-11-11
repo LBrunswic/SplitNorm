@@ -150,11 +150,12 @@ def train(
 
     commander1_arch = [
         [
-            ConvolutionalKernel.CommanderConstructors.commander_passthrough,
+            ConvolutionalKernel.CommanderConstructors.commander_passthrough_channel,
             {
                 'channel_dim' : channel1_dim,
                 'command_dim' : lvl1_command,
-                'output_dim' : channel1_dim+lvl1_command,
+                # 'output_dim' : channel1_dim+lvl1_command,
+                'output_dim' : channel1_dim,
                 'name': 'lvl1_commander'
             }
         ],
