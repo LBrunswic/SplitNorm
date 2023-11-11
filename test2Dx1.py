@@ -143,7 +143,8 @@ def train(
     }
     kernel_ensemble1_arch = {
         'flow_family': tfp.bijectors.FFJORD(**FFJORD_dorpri_arch1),
-        'command_dim': lvl1_command+channel1_dim,
+        # 'command_dim': lvl1_command+channel1_dim,
+        'command_dim': channel1_dim,
         'distribution_dim': DISTRIBUTION_DIM
     }
     kernel_ensemble1 = ConvolutionalKernel.FlowEnsemble(**kernel_ensemble1_arch)
