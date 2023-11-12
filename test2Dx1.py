@@ -321,13 +321,15 @@ def train(
     )
 
     def ttt(image):
-        return (image.numpy()/np.max(image)*255).numpy().astype('uint8')
+        if isinstance(image,tf.Tensor):
+            image = image.numpy()
+        return (image/np.max(image)*255).astype('uint8')
 
     ref_batches = []
     i = 0
     for batch in dataset:
         i+=1
-        if i>10:
+        if i>3:
             break
         ref_batches.append(batch)
 
@@ -352,7 +354,7 @@ def train(
                 os.makedirs(os.path.join(SAVE_FOLDER, 'images', case_folder), exist_ok=True)
                 plt.matshow(np.concatenate([
                     ttt(densities[i, :]).reshape(xmax, ymax),
-                    batch[1][i,:,-1].reshape(xmax,ymax)
+                    batch[1][i,:,-1].numpy().reshape(xmax,ymax)
                     ]
                     ,axis=1
                 ))
