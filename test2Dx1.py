@@ -126,7 +126,7 @@ def train(
                 'width' : flow_width,
                 'command_bypass':command1_bypass,
                 'time_bypass':time1_bypass,
-                'command_dim':channel1_dim,#+lvl1_command,
+                'command_dim':channel1_dim+lvl1_command,
                 'kernelKWarg' : {'activation': lambda x: alpha*tf.tanh(delta*x)},
             }
         ],
@@ -143,20 +143,20 @@ def train(
     }
     kernel_ensemble1_arch = {
         'flow_family': tfp.bijectors.FFJORD(**FFJORD_dorpri_arch1),
-        # 'command_dim': lvl1_command+channel1_dim,
-        'command_dim': channel1_dim,
+        'command_dim': lvl1_command+channel1_dim,
+        # 'command_dim': channel1_dim,
         'distribution_dim': DISTRIBUTION_DIM
     }
     kernel_ensemble1 = ConvolutionalKernel.FlowEnsemble(**kernel_ensemble1_arch)
 
     commander1_arch = [
         [
-            ConvolutionalKernel.CommanderConstructors.commander_passthrough_channel,
+            ConvolutionalKernel.CommanderConstructors.commander_passthrough,
             {
                 'channel_dim' : channel1_dim,
                 'command_dim' : lvl1_command,
-                # 'output_dim' : channel1_dim+lvl1_command,
-                'output_dim' : channel1_dim,
+                'output_dim' : channel1_dim+lvl1_command,
+                # 'output_dim' : channel1_dim,
                 'name': 'lvl1_commander'
             }
         ],
@@ -321,7 +321,7 @@ def train(
     )
 
     def ttt(image):
-        return (image/np.max(image)*255).numpy().astype('uint8')
+        return (image.numpy()/np.max(image)*255).numpy().astype('uint8')
 
     ref_batches = []
     i = 0
@@ -350,7 +350,12 @@ def train(
             for i in range(batch_size):
                 case_folder = 'case_%01d_%02d' % (k,i)
                 os.makedirs(os.path.join(SAVE_FOLDER, 'images', case_folder), exist_ok=True)
-                plt.matshow(np.concatenate([tf.reshape(ttt(densities[i, :]), (xmax, ymax)), tf.reshape(batch[1][i,:,-1],(xmax,ymax))],axis=1))
+                plt.matshow(np.concatenate([
+                    ttt(densities[i, :]).reshape(xmax, ymax),
+                    batch[1][i,:,-1].reshape(xmax,ymax)
+                    ]
+                    ,axis=1
+                ))
                 plt.savefig(os.path.join(SAVE_FOLDER,'images',case_folder, 'epoch_%03d.png' % epoch))
                 plt.close()
 
