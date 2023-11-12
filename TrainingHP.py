@@ -61,7 +61,6 @@ HPset = [
         'batch_size' : 32,
         'LR':1e-3,
     },
-
     # {
     #     'EPOCHS' :100,
     #     'STEP_PER_EPOCH' : 100,
